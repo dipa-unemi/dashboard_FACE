@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Académico FACE</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="brandbar">
+  <img class="brandbar-logo" src="img/logo-vicerrectorado.png"
+       alt="UNEMI · Vicerrectorado Académico de Formación de Grado">
+</header>
+
+<!-- Una sola pestaña por ahora. Las demás vistas de la facultad se agregan
+     aquí con su propio botón y su propio panel: cada tablero es un .html
+     independiente cargado en un iframe, para que no choquen estilos ni
+     nombres globales entre vistas. -->
+<div class="top-tabs" role="tablist" aria-label="Vistas del dashboard">
+  <button type="button" class="top-tab on" data-view="docentes" role="tab" aria-selected="true">Docentes</button>
+</div>
+
+<div class="view-panel" id="view-docentes">
+  <iframe id="docentesFrame" class="rendimiento-frame" src="docentes.html" title="Dashboard Docentes"></iframe>
+</div>
+
+<footer class="sitefooter">
+  <img class="sitefooter-logo sitefooter-logo--claro" src="img/logo-dipa.png"
+       alt="DIPA · Dirección de Innovación de Procesos Académicos">
+  <img class="sitefooter-logo sitefooter-logo--oscuro" src="img/logo-dipa-blanco.png"
+       alt="" aria-hidden="true">
+</footer>
+
+<script src="nav.js"></script>
+</body>
+</html>

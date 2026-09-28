@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Entornos y credenciales
+.env
+*.key
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporales de Excel/Office
+~$*
+*.tmp
+.Rproj.user
+
+# R: sesion/historial pueden contener microdatos cargados en memoria
+.RData
+.Rhistory
+
+# Datos fuente (privados, no deben estar en el repo público)
+data/
+# Segunda barrera: ningun Excel entra al repositorio, este donde este.
+*.xlsx
+*.xls
+
+# Tablas intermedias con datos personales (salida de los pasos de depuracion)
+build/
