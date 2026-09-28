@@ -23,11 +23,18 @@ desktop.ini
 .RData
 .Rhistory
 
-# Datos fuente (privados, no deben estar en el repo público)
-data/
-# Segunda barrera: ningun Excel entra al repositorio, este donde este.
+# Datos fuente. A diferencia del repositorio de FACSECYD, que es publico, este
+# repositorio es PRIVADO y guarda sus Excel de origen en data/ para que el
+# equipo trabaje sobre el mismo material. Ver el README antes de cambiar esto:
+# si el repositorio se hiciera publico, los Excel quedarian expuestos en todo
+# el historial, no solo en el ultimo commit.
+#
+# Fuera de data/ ningun Excel entra, este donde este.
 *.xlsx
 *.xls
+# Se habilitan uno por uno, a proposito: asi ningun archivo nuevo que aparezca
+# en data/ se sube sin que alguien lo decida.
+!data/data_docente.xlsx
 
 # Tablas intermedias con datos personales (salida de los pasos de depuracion)
 build/

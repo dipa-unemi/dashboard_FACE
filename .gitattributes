@@ -1,3 +1,4 @@
-# Sin regla LFS para *.xlsx a proposito: los Excel de origen no entran al
-# repositorio (ver README). La regla anterior fue la via por la que se
-# publicaron microdatos de estudiantes.
+# Sin regla LFS para *.xlsx a proposito. El unico Excel versionado pesa 1,5 MB
+# y git lo maneja sin problema; una regla LFS aqui solo agregaria un paso de
+# instalacion para quien clone. En el repositorio publico de FACSECYD esa misma
+# regla fue la via por la que se publicaron microdatos de estudiantes.

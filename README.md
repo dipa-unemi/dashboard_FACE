@@ -7,7 +7,7 @@ Dashboard académico de la Facultad de Educación y Ciencias de la Educación (F
 ## Estructura
 
 ```
-data/      Fuentes de datos en formato Excel (privadas, fuera del repositorio)
+data/      Fuentes de datos en formato Excel (versionadas: este repo es privado)
 scripts/   Agregación para el tablero
 docs/      Dashboard web (HTML/CSS/JS), publicado con GitHub Pages
 ```
@@ -28,18 +28,31 @@ vez de publicarse con seis de sus nueve dimensiones vacías.
 
 ## Manejo de los datos fuente
 
-**Los archivos de origen nunca entran al repositorio.** Contienen microdatos
-de personas identificables. Viven solo en la carpeta local `data/`, que está
-excluida por `.gitignore`, y se comparten por los canales internos de la
-facultad, no por GitHub.
+**Este repositorio es privado, y por eso guarda sus Excel de origen en
+`data/`.** Es una diferencia deliberada con el repositorio de FACSECYD, que es
+público y por tanto nunca los versiona. La idea es que el equipo trabaje sobre
+el mismo material sin pasarlo por correo.
 
-Esto vale también para el historial: un archivo borrado en un commit
-posterior sigue siendo descargable desde los commits anteriores. Si alguna
-vez se sube uno por error, no basta con borrarlo en un commit nuevo — avisa
-antes de seguir trabajando.
+Los archivos contienen microdatos de personas identificables. De ahí se
+derivan tres reglas que no son opcionales:
 
-Como salvaguarda, `.gitignore` bloquea `data/` y cualquier `.xlsx` o `.xls`
-en todo el repositorio.
+1. **El repositorio no puede hacerse público.** El historial de git es
+   permanente: cambiar la visibilidad expondría los Excel en todos los commits
+   anteriores, no solo en el último. Borrarlos en un commit nuevo no los borra.
+2. **GitHub Pages publica en abierto aunque el repositorio sea privado.** Si se
+   activa, el tablero queda accesible para cualquiera con el enlace. Eso está
+   bien para `docs/`, que solo contiene agregados — pero es una decisión que se
+   toma a conciencia, no de paso.
+3. **Quien tenga acceso al repositorio puede descargar los microdatos.** La
+   lista de colaboradores es, en la práctica, la lista de quién puede ver los
+   datos personales de la facultad.
+
+Como salvaguarda, `.gitignore` sigue bloqueando cualquier `.xlsx` o `.xls`
+fuera de `data/`, y dentro de `data/` los habilita **uno por uno**: un archivo
+nuevo que aparezca ahí no se sube solo, alguien tiene que decidirlo.
+
+Lo que se publica en `docs/` nunca son microdatos: son conteos por combinación
+de atributos, y el identificador del docente no llega al archivo publicado.
 
 ## Cómo se alimenta la pestaña de Docentes
 
