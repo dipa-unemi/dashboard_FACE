@@ -3,35 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Académico FACE</title>
-<link rel="stylesheet" href="styles.css">
+<title>Dashboard de Desempeño - FACE - UNEMI</title>
+<!-- Identificación interna (no visible): estructura e indicadores del dashboard FACSECYD (versión 2, octubre 2026).
+     La versión anterior de FACE (pestaña Docentes, docs/docentes.html) queda en el repositorio sin enlazar. -->
+<meta name="dashboard-version" content="2.0 · estructura FACSECYD · 2026-10">
+<!-- ?v=: cambiarlo al publicar cambios de estilo o código, para que el navegador no use la copia en caché -->
+<link rel="stylesheet" href="css/tablero.css?v=20261012">
 </head>
 <body>
 
-<header class="brandbar">
-  <img class="brandbar-logo" src="img/logo-vicerrectorado.png"
-       alt="UNEMI · Vicerrectorado Académico de Formación de Grado">
+<!-- Encabezado fijo: el logo y los filtros quedan siempre a la vista -->
+<header class="appbar">
+  <img class="appbar-logo" src="img/logo-vicerrectorado.png"
+       alt="UNEMI - Vicerrectorado Académico de Formación de Grado">
+  <div class="appbar-titulo">
+    <h1>Dashboard de Desempeño de la Carrera</h1>
+    <p>Facultad de Educación</p>
+  </div>
+  <div class="filters">
+    <!-- Las carreras se cargan desde el catálogo de los datos (FACS_DATA.carreras) -->
+    <div class="fld"><label for="fCarrera">Carrera</label><select id="fCarrera"></select></div>
+    <div class="fld"><label for="fModalidad">Modalidad</label><select id="fModalidad"></select></div>
+    <div class="fld"><label for="fNivel">Nivel</label><select id="fNivel"></select></div>
+    <div class="fld"><label for="fAnio">Periodo</label><select id="fAnio"></select></div>
+  </div>
 </header>
 
-<!-- Una sola pestaña por ahora. Las demás vistas de la facultad se agregan
-     aquí con su propio botón y su propio panel: cada tablero es un .html
-     independiente cargado en un iframe, para que no choquen estilos ni
-     nombres globales entre vistas. -->
-<div class="top-tabs" role="tablist" aria-label="Vistas del dashboard">
-  <button type="button" class="top-tab on" data-view="docentes" role="tab" aria-selected="true">Docentes</button>
-</div>
-
-<div class="view-panel" id="view-docentes">
-  <iframe id="docentesFrame" class="rendimiento-frame" src="docentes.html" title="Dashboard Docentes"></iframe>
+<div class="shell">
+  <aside class="side">
+    <nav aria-label="Vistas del dashboard"><ul class="nav" id="nav"></ul></nav>
+  </aside>
+  <main class="main">
+    <div class="body" id="vista"></div>
+  </main>
 </div>
 
 <footer class="sitefooter">
-  <img class="sitefooter-logo sitefooter-logo--claro" src="img/logo-dipa.png"
-       alt="DIPA · Dirección de Innovación de Procesos Académicos">
-  <img class="sitefooter-logo sitefooter-logo--oscuro" src="img/logo-dipa-blanco.png"
-       alt="" aria-hidden="true">
+  <p class="fuente">Fuente: Sistema de Gestión Académica (SGA) de la UNEMI, periodos académicos 2021 – 2026.</p>
+  <img src="img/logo-dipa-blanco.png" alt="DIPA - Dirección de Innovación de Procesos Académicos">
 </footer>
 
-<script src="nav.js"></script>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script src="data/indicadores.js"></script>
+<script src="data/face-data.js"></script>
+<script src="data/rendimiento-data.js"></script>
+<script src="data/graduados-data.js"></script>
+<script src="data/trayectoria-data.js"></script>
+<script src="data/perfil-data.js"></script>
+<script src="data/mapa-ecuador.js"></script>
+<script src="data/mapa-mundo.js"></script>
+<script src="data/docentes-data.js"></script>
+<script src="js/app.js?v=20261012"></script>
 </body>
 </html>
