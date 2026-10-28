@@ -350,14 +350,16 @@ window.FACS_INDICADORES = {
     definicion: "Porcentaje de docentes de la carrera que tienen resultado en la evaluación integral docente del año.",
     formula: "(Docentes evaluados / docentes de la carrera) × 100",
     unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Evaluación integral docente",
-    responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+    responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1,
+    acumula: true  // en el año en curso la evaluación del 2S se hace al cierre del semestre: no se compara con un año completo
   },
   doc_cap: {
     vista: "docentes", dimension: "Docentes", nombre: "Participación en capacitación",
     definicion: "Porcentaje de docentes con al menos un curso de capacitación registrado en los 12 meses previos a algún periodo del año.",
     formula: "(Docentes con al menos un curso / total de docentes) × 100",
     unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Capacitación y hoja de vida docente",
-    responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+    responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
   },
   doc_tc: {
     vista: "docentes", dimension: "Docentes", nombre: "Docentes a tiempo completo",

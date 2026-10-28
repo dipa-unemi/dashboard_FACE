@@ -300,11 +300,12 @@
       case 'perf_n': return p.parcial ? 'Año en curso: aún puede crecer' : 'Base de los porcentajes del perfil';
       case 'perf_muj': case 'perf_gse': case 'perf_etn': case 'perf_disc': case 'perf_fuera': case 'perf_edad':
         return `${num(k)} de ${num(n)} estudiantes`;
-      case 'doc_n': return p.parcial ? 'Año en curso: solo 1S 2026' : '';
+      case 'doc_n': return p.parcial ? 'Año en curso: ' + semCurso() : '';
       case 'doc_eval': return `Sobre ${num(n)} docentes evaluados` + (p.a >= 2025 ? ' - nueva escala desde 2025' : '');
       case 'doc_carga': return 'Promedio por periodo';
       case 'doc_sinmae': return `${num(k)} de ${num(n)} docentes` + (p.resto.length ? ': ' + p.resto.map(([t, x]) => `${num(x)} ${NIV_CORTO[t] || t.toLowerCase()}`).join(', ') : '');
-      case 'doc_phd': case 'doc_maest': case 'doc_cuarto': case 'doc_evalcob': case 'doc_cap': case 'doc_tc':
+      case 'doc_evalcob': return `${num(k)} de ${num(n)} docentes` + (p.parcial && evalPend() ? ` - la evaluación del ${evalPend()} se hace al cierre del semestre` : p.parcial ? ' - año en curso' : '');
+      case 'doc_phd': case 'doc_maest': case 'doc_cuarto': case 'doc_cap': case 'doc_tc':
         return `Sobre ${num(n)} docentes` + (p.parcial ? ' - año en curso' : '');
       case 'grad_resp': return `${num(p.u)} graduados únicos`;
       case 'grad_cob': return `${num(k)} de ${num(n)} titulados`;
@@ -1555,11 +1556,25 @@
     const an = (DOC && DOC.det[car]) || {}, ys = Object.keys(an).filter(y => +y <= anioCorte()).sort();
     return ys.length ? { y: ys[ys.length - 1], d: an[ys[ys.length - 1]] } : null;
   }
+  // Año en curso de docentes: semestres cargados («solo 1S 2026» o «1S y 2S 2026») y los que aún no tienen
+  // evaluación (los envía 03_agregar_docentes.py)
+  function semCurso() {
+    const s = (DOC.periodosParcial || []).map(x => x.slice(0, 2));
+    return s.length ? (s.length === 1 ? 'solo ' : '') + s.join(' y ') + ' ' + DOC.anioParcial : String(DOC.anioParcial);
+  }
+  const evalPend = () => (DOC.evalPendiente || []).map(x => x.slice(0, 2) + ' ' + x.slice(-4)).join(' y ');
   function insDoc() {
     const out = [], c = st.car;
     if (!DOC) return out;
     const n = medir('doc_n', c).cur, phd = medir('doc_phd', c).cur, mae = medir('doc_maest', c).cur, sm = medir('doc_sinmae', c).cur;
-    if (n && phd) out.push(`La carrera contó con ${B(num(n.v) + ' docentes')} en ${n.a}${n.parcial ? ' (solo 1S 2026)' : ''}; ${B(fmt('doc_phd', phd.v))} tiene doctorado` +
+    if (n && n.parcial && (DOC.periodosParcial || []).length > 1) {
+      const ec = medir('doc_evalcob', c).cur, sinEv = ec ? ec.n - ec.num : 0;
+      out.push(`${B(n.a + ' todavía está en curso.')} Las cifras de docentes de ${n.a} ya incluyen el ${semCurso()}, pero el 2S termina en diciembre: ` +
+        `la capacitación aún puede crecer` + (evalPend() ? ` y la evaluación del ${evalPend()} se realiza al cierre del semestre` +
+        (sinEv > 0 ? `, por eso ${num(sinEv)} ${sinEv === 1 ? 'docente que solo dicta' : 'docentes que solo dictan'} en ese semestre ${sinEv === 1 ? 'aparece' : 'aparecen'} todavía sin evaluación` : '') : '') +
+        `. Las cifras de ${n.a} quedan cerradas cuando termine el año.`);
+    }
+    if (n && phd) out.push(`La carrera contó con ${B(num(n.v) + ' docentes')} en ${n.a}${n.parcial ? ` (año en curso: ${semCurso()})` : ''}; ${B(fmt('doc_phd', phd.v))} tiene doctorado` +
       (mae ? `, ${B(fmt('doc_maest', mae.v))} tiene la maestría como título más alto` : '') +
       (sm ? ` y ${B(fmt('doc_sinmae', pct1(sm.n - sm.num, sm.n)))} tiene al menos maestría.` : '.'));
     const e = medir('doc_eval', c);
@@ -1573,7 +1588,7 @@
     if (!DOC) return '<div class="empty"><b>Faltan los datos de docentes</b>No se cargó data/docentes-data.js.</div>';
     const c = st.car, dd = docDet(c), d = dd && dd.d, y = dd && dd.y;
     const ids = ['doc_n', 'doc_phd', 'doc_maest', 'doc_sinmae', 'doc_tc', 'doc_eval', 'doc_cap', 'sat_doc'];
-    const notaY = y ? `${y}${+y === DOC.anioParcial ? ' (año en curso: 1S 2026)' : ''}` : '';
+    const notaY = y ? `${y}${+y === DOC.anioParcial ? ` (año en curso: ${semCurso()})` : ''}` : '';
     const barras = (filas, o) => {
       o = o || {};
       if (!filas || !filas.length) return '<div class="empty"><b>Sin datos para este año</b></div>';

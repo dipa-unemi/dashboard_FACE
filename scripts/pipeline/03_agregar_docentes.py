@@ -6,8 +6,9 @@ dedicación, categoría y datos demográficos) y evaluación del desempeño
 (Result_desepeno_docente: títulos, evaluación integral, capacitación y experiencia).
 
 Unidad: docente único por carrera y AÑO (los dos semestres del año). En la
-facultad, quien dicta en varias carreras cuenta una vez. El año en curso
-(solo 1S) se marca como parcial.
+facultad, quien dicta en varias carreras cuenta una vez. El último año se marca
+como parcial (año en curso) mientras tenga un solo periodo cargado o su último
+periodo no haya terminado (fecha de fin posterior al día en que se corre).
 
 Criterios:
   * Nivel académico = título más alto registrado en el SGA hasta ese año:
@@ -46,7 +47,14 @@ COD_DE = dict(zip(doc.periodo, doc.periodo_codigo))
 des["cod"] = des.periodo.map(COD_DE)
 assert des.cod.notna().all(), f"periodos de desempeño sin código: {set(des.periodo[des.cod.isna()])}"
 des["anio"] = des.cod.str[-4:].astype(int)
-ANIO_PARCIAL = int(doc.anio.max()) if doc[doc.anio == doc.anio.max()].periodo_codigo.nunique() == 1 else None
+# Año en curso: con el 2S cargado el año ya tiene sus dos periodos, pero sigue abierto hasta que el 2S
+# termina (la capacitación sigue sumando y la evaluación del 2S se hace al cierre del semestre).
+ULT = int(doc.anio.max())
+PER_ULT = sorted(doc[doc.anio == ULT].periodo_codigo.unique(), key=orden_periodo)
+FIN_ULT = pd.to_datetime(des[des.anio == ULT].periodo_fin).max()
+ANIO_PARCIAL = ULT if len(PER_ULT) == 1 or FIN_ULT > pd.Timestamp.today() else None
+# periodos del año en curso que aún no tienen evaluación integral (nadie EVALUADO)
+EVAL_PENDIENTE = [c for c in PER_ULT if not (des[des.cod == c].eval_estado == "EVALUADO").any()] if ANIO_PARCIAL else []
 ANIOS = sorted(doc.anio.unique())
 
 # ------------------------------------------------ título más alto por docente y año
@@ -182,6 +190,7 @@ for k, sub in por_carrera(doc):
 
 escribir_js("docentes-data.js", "FACS_DOC", {
     "umbralEval": UMBRAL_EVAL, "expMin": EXP_MIN, "minBase": MIN_BASE, "kAnon": K_ANON,
-    "anioParcial": ANIO_PARCIAL, "ind": ind, "det": det,
+    "anioParcial": ANIO_PARCIAL, "periodosParcial": PER_ULT if ANIO_PARCIAL else [], "evalPendiente": EVAL_PENDIENTE,
+    "ind": ind, "det": det,
 }, "03_agregar_docentes.py", "Solo datos agregados de docentes.")
 print("Docentes por año (facultad):", {p["a"]: p["v"] for p in ind["doc_n"][FACULTAD]})
