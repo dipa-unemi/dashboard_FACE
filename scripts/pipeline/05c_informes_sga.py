@@ -42,8 +42,18 @@ GSE = ["BAJO", "MEDIO BAJO", "MEDIO TÍPICO", "MEDIO ALTO", "ALTO"]
 EN_CURSO = {"2S-2026"}
 
 
+# Otros nombres con que se guardaron los resultados (el primero que exista gana, en este orden).
+ALIAS = {"R11_afinidad_CACES_FACE": ["R11_afinidad_CACES_FACE", "R11_afinidad_CACES"],
+         "R23_produccion_FACE": ["R23_produccion_v2", "R23_produccion_FACE"]}
+
+
+def buscar(nombre):
+    return next((INFORMES / f"{n}{ext}" for n in ALIAS.get(nombre, [nombre]) for ext in (".xlsx", ".csv")
+                 if (INFORMES / f"{n}{ext}").exists()), None)
+
+
 def leer(nombre):
-    ruta = next((INFORMES / f"{nombre}{ext}" for ext in (".xlsx", ".csv") if (INFORMES / f"{nombre}{ext}").exists()), None)
+    ruta = buscar(nombre)
     if ruta is None:
         raise SystemExit(f"No existe {INFORMES / nombre}.xlsx ni .csv (variable FACE_INFORMES_DIR)")
     df = (pd.read_excel(ruta) if ruta.suffix == ".xlsx"
@@ -163,7 +173,7 @@ tit_c, oc_tit = proteger(tit_c)
 # Con la consulta según el CACES (R11_afinidad_CACES_FACE): cada paralelo vale 1 si su docente es afín y 0 si no, la
 # asignatura vale el promedio de sus paralelos y TAAF es la suma de esos promedios (Modelo genérico, indicador 8).
 # Sin ella, se usa la del reporte del SGA (afín si el promedio 0/33/67/100 es mayor que 0).
-CACES = any((INFORMES / f"R11_afinidad_CACES_FACE{e}").exists() for e in (".xlsx", ".csv"))
+CACES = buscar("R11_afinidad_CACES_FACE") is not None
 r11 = leer("R11_afinidad_CACES_FACE" if CACES else "R11_afinidad_FACE_CORREGIDO")
 etiquetas.update({c: etiqueta_periodo(n) for c, n in zip(r11.periodo, r11.periodo_nombre)})
 if CACES:
