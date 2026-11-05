@@ -11,13 +11,15 @@ Trayectoria (definiciones del catálogo de indicadores de FACS):
     nivel), continuidad (estuvo matriculado el periodo anterior) o reingreso.
   * Retención: de los matriculados en t (sin quienes se titulan en t ni cursan
     el último nivel), % que se matricula en t+1 o se titula. Se suma por año.
-  * Cohortes: solo las que ingresaron desde el primer periodo de la base
-    (1S-2021); de las anteriores no se conoce cuántos ingresaron.
-  * Retención de primer año: sigue matriculada (o titulada) dos semestres después.
-  * Deserción a mitad de carrera (Modelo genérico de evaluación): % de la
-    cohorte que no estaba matriculada ni titulada en Ai+δ, δ = la mitad de los
-    niveles de la carrera (redondeada hacia abajo).
-  * Graduación oportuna: titulados hasta duración + un año (2 semestres); la
+  * Cohorte Ai (informes FR0122 y FR0125 del SGA, Modelo genérico del CACES):
+    inscritos con alguna asignatura de primer nivel en el periodo. Desde 1S-2021,
+    primer periodo de la base.
+  * Retención de primer año: de quienes ingresan ese periodo (nuevo ingreso),
+    sigue matriculada (o titulada) dos semestres después.
+  * Deserción a mitad de carrera (FR0122): % de la cohorte que no estaba
+    matriculada ni titulada en Ai+δ, δ = la mitad de los niveles de la carrera
+    (redondeada hacia arriba: 4 en 8 niveles, 5 en 9 niveles).
+  * Titulación (FR0125): titulados hasta Ai + duración + 2 semestres; la
     ventana se considera cerrada solo si ese plazo ya pasó.
   La duración de cada carrera es el nivel más alto observado en la base.
 
@@ -129,27 +131,29 @@ for k, b in bloques(sp):
         if s:
             anual[f"{k}|cohorte:{c}"] = s
 
-# Cohortes observadas desde su ingreso
-ing = sp[sp.cod == sp.coh].drop_duplicates("ins")[["clave", "ins", "coh", "i", "gi", "dur", "grupo_socioeconomico", "sexo"]]
+# Cohortes: matriculados en primer nivel (primer_nivel) y nuevo ingreso (nuevo, solo para la retención de primer año)
+c_nivel1 = set(zip(est.ins[est.niv == 1], est.cod[est.niv == 1]))
+ing = sp.assign(primer_nivel=[(s, c) in c_nivel1 for s, c in zip(sp.ins, sp.cod)], nuevo=(sp.cod == sp.coh).fillna(False))
+ing = ing[ing.primer_nivel | ing.nuevo][["clave", "ins", "cod", "i", "gi", "dur", "grupo_socioeconomico", "sexo", "primer_nivel", "nuevo"]]
 
 
 def tabla_coh(x):
     co, de = {}, {}
-    for c, h in x.groupby("coh"):
+    for c, g in x.groupby("cod"):
+        h, nv = g[g.primer_nivel], g[g.nuevo]
         n = len(h)
         if n < MIN_BASE:
             continue
         i0 = idx(c)
-        en = lambda j: np.array([(s, j) in presentes for s in h.ins])
-        base1 = n if i0 + 2 <= ULT_I else 0
-        ret1 = int((en(i0 + 2) | (h.gi <= i0 + 2).values).sum()) if base1 else 0
+        base1 = len(nv) if i0 + 2 <= ULT_I and len(nv) >= MIN_BASE else 0
+        ret1 = int((np.array([(s, i0 + 2) in presentes for s in nv.ins]) | (nv.gi <= i0 + 2).values).sum()) if base1 else 0
         tt = int(h.gi.notna().sum())
-        fin = i0 + h.dur.values - 1 + 2     # último semestre de la ventana oportuna
+        fin = i0 + h.dur.values + 2     # último semestre de la ventana de titulación (Ai + duración + 2)
         to = int((h.gi.values <= fin).sum())
         cerrada = int((fin <= ULT_I).all())
         co[c] = [n, base1, ret1, tt, to, cerrada]
         # δ = mitad de la carrera de cada estudiante; la cohorte se mide solo si todos llegaron a Ai+δ
-        delta = (h.dur.values // 2).astype(int)
+        delta = ((h.dur.values + 1) // 2).astype(int)
         if (i0 + delta <= ULT_I).all():
             sigue = (np.array([(s, i0 + d) in presentes for s, d in zip(h.ins, delta)])
                      | (h.gi.values <= i0 + delta))
@@ -184,7 +188,7 @@ for k, b in bloques(tt):
 escribir_js("trayectoria-data.js", "FACS_TRAY", {
     "minBase": MIN_BASE, "kAnon": K_ANON, "provisional": PROVISIONAL,
     "duracion": [{"carrera": k, "duracion_niveles": int(v)} for k, v in DURACION.items()],
-    "delta": int(min(DURACION.values())) // 2,
+    "delta": (int(min(DURACION.values())) + 1) // 2,
     "anual": anual, "coh": coh, "tit": tit, "des": des,
 }, "05_agregar_estudiantes.py", "Solo datos agregados de trayectoria estudiantil.")
 

@@ -41,24 +41,24 @@ window.FACS_INDICADORES = {
   },
   tray_des: {
     vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Tasa de deserción (a mitad de la carrera)",
-    definicion: "De los estudiantes que iniciaron el primer nivel en una cohorte, porcentaje que ya no continuaba sus estudios a mitad de la carrera (5.º semestre de la cohorte, para 9 niveles). Forma de cálculo del Modelo genérico de evaluación de carreras: TD = 100 × NE(Ai+δ) / NE(Ai).",
-    formula: "TD = 100 × NE(Ai+δ) / NE(Ai): estudiantes de la cohorte Ai que no continuaban en Ai+δ / estudiantes que iniciaron en la cohorte Ai; δ = mitad de la duración",
-    unidad: "%", sentido: "menor", frecuencia: "Por cohorte", fuente: "SGA - Matrícula",
-    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 2, umbral: 1
+    definicion: "De los estudiantes que cursan alguna asignatura de primer nivel en una cohorte (sin retiro de matrícula), porcentaje que no está matriculado a mitad de la carrera (δ = 4 semestres después en carreras de 8 niveles y 5 en las de 9 niveles). Retiros, anulaciones y cambios de carrera cuentan como deserción; no cuenta a quienes se graduaron. Mismo cálculo del informe FR0122 del SGA (Modelo genérico de evaluación de carreras del CACES): TD = 100 × NE(Ai+δ) / NE(Ai), truncado a dos decimales.",
+    formula: "TD = 100 × NE(Ai+δ) / NE(Ai): estudiantes de la cohorte Ai que no continuaban en Ai+δ / estudiantes matriculados en primer nivel en la cohorte Ai; δ = mitad de la duración",
+    unidad: "%", sentido: "menor", frecuencia: "Por cohorte", fuente: "SGA - Informe FR0122 (consulta R16)",
+    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 2, umbral: 1, dec: 2
   },
   tray_grad: {
     vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Tasa de graduación oportuna",
-    definicion: "Porcentaje de una cohorte que se titula en el plazo de duración de la carrera (9 niveles) más un año adicional. Es la tasa de titulación del Modelo genérico de evaluación de carreras: TT = 100 × NET / TE. Solo se mide en cohortes cuya ventana ya cerró.",
-    formula: "TT = 100 × NET / TE: titulados de la cohorte en el plazo de duración + un año / estudiantes matriculados en primer nivel en la cohorte",
-    unidad: "%", sentido: "mayor", frecuencia: "Por cohorte", fuente: "SGA - Matrícula y titulación",
-    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+    definicion: "Porcentaje de los estudiantes que cursan alguna asignatura de primer nivel en una cohorte (sin retiro de matrícula) que se gradúa en el plazo de duración de la carrera más un año adicional (hasta el fin de Ai + duración + 2 semestres). Mismo cálculo del informe FR0125 del SGA (tasa de titulación del Modelo genérico de evaluación de carreras del CACES): TT = 100 × NET / TE, truncado a dos decimales. Solo se mide en cohortes cuyo plazo ya terminó.",
+    formula: "TT = 100 × NET / TE: titulados de la cohorte en el plazo de duración + un año / estudiantes de primer nivel en la cohorte",
+    unidad: "%", sentido: "mayor", frecuencia: "Por cohorte", fuente: "SGA - Informe FR0125 (consulta R19)",
+    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1, dec: 2
   },
   tray_gradt: {
     vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Tasa de graduación total",
-    definicion: "Porcentaje de una cohorte de ingreso que se ha titulado hasta hoy, sin límite de tiempo. Solo cohortes cuya ventana de graduación oportuna ya cerró.",
-    formula: "(Titulados de la cohorte / estudiantes que ingresaron en la cohorte) × 100",
+    definicion: "Porcentaje de una cohorte (estudiantes de primer nivel, como en la graduación oportuna) que se ha graduado hasta hoy, sin límite de tiempo. Solo cohortes cuyo plazo de graduación oportuna ya terminó (consulta R19).",
+    formula: "(Titulados de la cohorte / estudiantes matriculados en primer nivel en la cohorte) × 100",
     unidad: "%", sentido: "mayor", frecuencia: "Por cohorte", fuente: "SGA - Matrícula y titulación",
-    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1, dec: 2
   },
   tray_ret1: {
     vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Retención de primer año",
@@ -66,6 +66,14 @@ window.FACS_INDICADORES = {
     formula: "(Estudiantes de la cohorte matriculados al año siguiente / estudiantes de la cohorte) × 100",
     unidad: "%", sentido: "mayor", frecuencia: "Por cohorte", fuente: "SGA - Matrícula",
     responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+  },
+  tray_perm: {
+    vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Tasa de permanencia (1.ª a 2.ª matrícula)",
+    definicion: "De los estudiantes de nuevo ingreso matriculados en primer nivel en el periodo anterior, porcentaje que se matricula en segundo nivel en el periodo indicado. El periodo anterior es el del semestre previo con más estudiantes de la carrera. Mismo cálculo del informe FR0087 del SGA: PE1 = 100 × NE 2.ª matrícula / NE 1.ª matrícula, truncado a dos decimales.",
+    formula: "PE1 = 100 × nuevos de primer nivel del periodo anterior que pasan a segundo nivel / nuevos de primer nivel del periodo anterior",
+    unidad: "%", sentido: "mayor", frecuencia: "Semestral", fuente: "SGA - Informe FR0087 (consulta R02)",
+    responsable: "Dirección de Innovación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1, dec: 2,
+    acumula: true  // el periodo en curso (2S-2026) todavía puede cambiar: no se compara con uno cerrado
   },
   tray_tit: {
     vista: "estudiantes", sub: "tray", dimension: "Estudiantes", nombre: "Titulados",
@@ -337,6 +345,14 @@ window.FACS_INDICADORES = {
     unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Títulos (desempeno_doc)",
     responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
   },
+  doc_afin: {
+    vista: "docentes", dimension: "Docentes", nombre: "Afinidad del personal académico",
+    definicion: "Porcentaje de las asignaturas profesionalizantes y de integración curricular (ejes 3 y 43 de la malla) ofertadas en el periodo impartidas por docentes afines al campo detallado de la asignatura, según el Modelo genérico de evaluación de carreras del CACES (indicador 8). Un docente es afín si cumple al menos uno de estos criterios en ese campo: maestría o PhD (la especialidad solo en Salud), publicaciones (artículos, libros, capítulos o ponencias) o proyectos de vinculación, obtenidos hasta el fin del periodo. Con varios paralelos, la afinidad de la asignatura es el promedio simple de sus paralelos (un paralelo con docente afín vale 1). Los campos con el mismo nombre se consideran equivalentes y una asignatura sin campo detallado en la malla no es afín. El SGA no registra el campo de la experiencia profesional: ese criterio no se puede medir.",
+    formula: "APA = 100 × TAAF / TA: suma de la afinidad de las asignaturas (promedio de sus paralelos) / asignaturas de los ejes 3 y 43 ofertadas",
+    unidad: "%", sentido: "mayor", frecuencia: "Semestral", fuente: "SGA - Malla, distributivo, títulos, producción y vinculación (consulta R11 según el CACES)",
+    responsable: "Dirección de carrera", meta: null, lineaBase: null, tolerancia: 5, umbral: 1, dec: 2,
+    acumula: true  // el periodo en curso (2S-2026) todavía puede cambiar: no se compara con uno cerrado
+  },
   doc_eval: {
     vista: "docentes", dimension: "Docentes", nombre: "Evaluación docente satisfactoria",
     definicion: "Porcentaje de docentes evaluados con resultado total de 4,0 o más (escala de 1 a 5). Desde 2025 la escala del resultado cambia y los valores se concentran cerca de 4,0: la caída de ese año refleja el cambio de metodología; el umbral está pendiente de validación.",
@@ -399,48 +415,138 @@ window.FACS_INDICADORES = {
     responsable: "Dirección de Evaluación y Perfeccionamiento Académico", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
   },
 
-  /* ---------------- Vista 4 - Investigación ---------------- */
-  pub_total: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Producción científica",
-    definicion: "Artículos publicados por los docentes de la carrera, aprobados por la universidad y con categoría institucional asignada. Cada artículo se cuenta una sola vez aunque lo firmen varios docentes.",
-    formula: "Número de artículos únicos publicados en el año",
-    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica",
-    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05
+  /* ---------------- Vista 4 - Investigación ----------------
+     Producción científica (informe FR0128, consulta R23) y proyectos de investigación (informe FR0127,
+     consulta R22). isub = apartado de la vista: res, art, lib, cap, pon, proc, proy. */
+  prod_total: {
+    vista: "investigacion", isub: "res", dimension: "Investigación", nombre: "Producción científica total",
+    definicion: "Artículos, libros, capítulos de libro, ponencias y proceedings publicados en el año. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de productos únicos publicados en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  prod_aut: {
+    vista: "investigacion", isub: "res", dimension: "Investigación", nombre: "Profesores autores",
+    definicion: "Docentes de la carrera que firman al menos un producto científico publicado en el año (informe FR0128).",
+    formula: "Número de docentes únicos autores de algún producto del año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
   },
   doc_prod: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Docentes con producción científica",
-    definicion: "Porcentaje de los docentes que dictaron clases en la carrera durante el año y que publicaron al menos un artículo ese mismo año.",
-    formula: "(Docentes con al menos un artículo / docentes de la carrera en el año) × 100",
-    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica y distributivo",
+    vista: "investigacion", isub: "res", dimension: "Investigación", nombre: "Docentes con artículos publicados",
+    definicion: "Porcentaje de los docentes que dictaron clases en la carrera durante el año que publicaron al menos un artículo científico ese año (autor en el distributivo de la carrera el año de la publicación, como en el informe FR0128).",
+    formula: "(Docentes autores de al menos un artículo del año / docentes de la carrera en el año) × 100",
+    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23) y distributivo",
     responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1,
     acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
   },
+  prod_id: {
+    vista: "investigacion", isub: "res", dimension: "Investigación", nombre: "Productos con DOI o ISBN",
+    definicion: "Porcentaje de los productos del año con identificador: DOI en artículos, ponencias y proceedings; ISBN en libros y capítulos.",
+    formula: "(Productos con DOI o ISBN / productos del año) × 100",
+    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
+  },
+  prod_proy: {
+    vista: "investigacion", isub: "res", dimension: "Investigación", nombre: "Productos derivados de proyectos",
+    definicion: "Productos del año que provienen de un proyecto de investigación registrado en el SGA.",
+    formula: "Número de productos marcados como resultado de un proyecto",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  pub_total: {
+    vista: "investigacion", isub: "art", dimension: "Investigación", nombre: "Artículos científicos",
+    definicion: "Artículos publicados en revistas indexadas, de impacto mundial o regional. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de artículos únicos publicados en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
   pub_alto: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Artículos en revistas de impacto mundial",
-    definicion: "Porcentaje de los artículos del año publicados en revistas indexadas en Scopus o Web of Science (categoría científica I o II).",
-    formula: "(Artículos científicos nivel I y II / artículos del año) × 100",
-    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica",
+    vista: "investigacion", isub: "art", dimension: "Investigación", nombre: "Artículos en bases de impacto mundial",
+    definicion: "Porcentaje de los artículos del año publicados en revistas indexadas en bases de impacto mundial (p. ej. Scopus o Web of Science); el resto son de impacto regional, como en el informe FR0128.",
+    formula: "(Artículos de impacto mundial / artículos del año) × 100",
+    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
     responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
   },
   pub_q12: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Artículos en cuartiles Q1 y Q2",
+    vista: "investigacion", isub: "art", dimension: "Investigación", nombre: "Artículos en cuartiles Q1 y Q2",
     definicion: "Artículos del año publicados en revistas ubicadas en el primer o segundo cuartil de su área: el 50 % de revistas de mayor impacto.",
     formula: "Número de artículos en revistas Q1 o Q2",
-    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica",
-    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
   },
   pub_est: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Artículos con coautoría estudiantil",
+    vista: "investigacion", isub: "art", dimension: "Investigación", nombre: "Artículos con coautoría estudiantil",
     definicion: "Porcentaje de los artículos del año en los que participa al menos un estudiante como coautor: mide cuánto se integra la investigación en la formación.",
     formula: "(Artículos con al menos un estudiante coautor / artículos del año) × 100",
-    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica",
+    unidad: "%", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
     responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 5, umbral: 1
   },
   pub_proy: {
-    vista: "investigacion", dimension: "Investigación", nombre: "Artículos derivados de proyectos",
-    definicion: "Artículos del año que provienen de un proyecto de investigación registrado en la universidad.",
+    vista: "investigacion", isub: "art", dimension: "Investigación", nombre: "Artículos derivados de proyectos",
+    definicion: "Artículos del año que provienen de un proyecto de investigación registrado en el SGA.",
     formula: "Número de artículos marcados como resultado de un proyecto",
-    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Producción científica",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  prod_lib: {
+    vista: "investigacion", isub: "lib", dimension: "Investigación", nombre: "Libros",
+    definicion: "Libros publicados en el año. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de libros únicos publicados en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  prod_cap: {
+    vista: "investigacion", isub: "lib", dimension: "Investigación", nombre: "Capítulos de libro",
+    definicion: "Capítulos de libro publicados en el año. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de capítulos únicos publicados en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  prod_pon: {
+    vista: "investigacion", isub: "pon", dimension: "Investigación", nombre: "Ponencias",
+    definicion: "Ponencias presentadas y publicadas en eventos científicos en el año. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de ponencias únicas del año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  prod_proc: {
+    vista: "investigacion", isub: "proc", dimension: "Investigación", nombre: "Proceedings",
+    definicion: "Trabajos publicados en memorias de congresos (proceedings) en el año. Cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación; un producto con varios autores de la carrera se cuenta una vez (criterio del informe FR0128 del SGA).",
+    formula: "Número de proceedings únicos del año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0128 (consulta R23)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  inv_proy: {
+    vista: "investigacion", isub: "proy", dimension: "Investigación", nombre: "Proyectos de investigación",
+    definicion: "Proyectos de investigación aprobados, en ejecución o finalizados (internos y externos), con al menos un integrante que consta en el distributivo de la carrera, que estuvieron en ejecución en el año. Un proyecto se cuenta en cada año en que se ejecutó. Mismo criterio del informe FR0127 del SGA.",
+    formula: "Número de proyectos en ejecución o finalizados en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0127 (consulta R22)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05
+  },
+  inv_ini: {
+    vista: "investigacion", isub: "proy", dimension: "Investigación", nombre: "Proyectos iniciados",
+    definicion: "Proyectos de investigación de la carrera que iniciaron en el año (informe FR0127).",
+    formula: "Número de proyectos con fecha de inicio en el año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0127 (consulta R22)",
+    responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05,
+    acumula: true  // en el año en curso todavía puede crecer: no se compara con un año completo
+  },
+  inv_prof: {
+    vista: "investigacion", isub: "proy", dimension: "Investigación", nombre: "Profesores en proyectos de investigación",
+    definicion: "Docentes de la carrera que integran al menos un proyecto de investigación en ejecución en el año (informe FR0127).",
+    formula: "Número de docentes únicos integrantes de proyectos del año",
+    unidad: "N.º", sentido: "mayor", frecuencia: "Anual", fuente: "SGA - Informe FR0127 (consulta R22)",
     responsable: "Facultad de Investigación", meta: null, lineaBase: null, tolerancia: 10, umbral: 0.05
   },
 

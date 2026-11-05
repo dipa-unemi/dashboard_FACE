@@ -35,6 +35,10 @@ else:
     DATOS = RAIZ
 PROC = DATOS / "_procesado"
 SALIDA = RAIZ / "docs" / "data"
+# Salidas de las consultas que replican los informes del SGA (consultas/Consultas_nuevas en el repo de
+# Dashboard_Academico_Perfil): R02, R11, R16, R19, R22 y R23. Las lee el paso 05c. Llevan microdatos
+# (persona_id, docente_id): igual que los extractos, nunca entran al repositorio.
+INFORMES = Path(os.environ["FACE_INFORMES_DIR"]) if os.environ.get("FACE_INFORMES_DIR") else DATOS / "datas_nuevas"
 
 # --------------------------------------------------------------- carreras
 # Mismo criterio que FACSECYD: las carreras NO se unifican; la versión de malla

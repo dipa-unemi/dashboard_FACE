@@ -35,7 +35,9 @@
 (function () {
   'use strict';
   const D = window.FACS_DATA, CAT = window.FACS_INDICADORES, R = window.FACS_REND, G = window.FACS_GRAD, T = window.FACS_TRAY, P = window.FACS_PERFIL,
-    DOC = window.FACS_DOC;   // vista 3 - Cuerpo docente (scripts/pipeline/03_agregar_docentes.py)
+    DOC = window.FACS_DOC,   // vista 3
+    INF = window.FACS_INF;   // informes del SGA: permanencia, deserción, titulación, afinidad, producción y proyectos (05c_informes_sga.py)
+  // - Cuerpo docente (scripts/pipeline/03_agregar_docentes.py)
   /* Protección de datos: umbrales con que se exportaron los datos de la vista 1 (ver scripts/pipeline/comun.py). */
   /* El perfil no aplica umbral (decisión de la Dirección); las demás pestañas sí. */
   const MIN_BASE = (R || T || G || {}).minBase || 0, K_ANON = (R || G || T || {}).kAnon || 0;
@@ -128,6 +130,8 @@
     doc_eval: ICO.estrella, doc_cap: ICO.bombilla, sat_doc: ICO.sonrisa, sat_est: ICO.sonrisa, sat_grad: ICO.diploma,
     // vistas 2, 4, 5 y 6
     pub_total: ICO.documento, doc_prod: ICO.lapiz, pub_alto: ICO.globo, pub_q12: ICO.estrella, pub_est: ICO.birrete, pub_proy: ICO.bombilla,
+    prod_total: ICO.documento, prod_aut: ICO.personas, prod_id: ICO.check, prod_proy: ICO.bombilla, prod_lib: ICO.libro, prod_cap: ICO.libro,
+    prod_pon: ICO.mensaje, prod_proc: ICO.documento, inv_proy: ICO.lupa, inv_ini: ICO.bandera, inv_prof: ICO.personas, tray_perm: ICO.escudo, doc_afin: ICO.diana,
     vin_proy: ICO.mano, vin_benef: ICO.personas, vin_avance: ICO.tendencia, vin_est: ICO.birrete, vin_culm: ICO.check,
     sat_serv: ICO.sonrisa, tut_cob: ICO.mensaje, tut_ejec: ICO.calendario, tut_int: ICO.repetir, beca_cob: ICO.dolar
   };
@@ -150,7 +154,7 @@
      gf = grupo de graduados; tf = grupo de trayectoria; glin = indicador de la línea de graduados. */
   const ultimoSem = D.periodos[D.periodos.length - 1].p;
   const st = { car: FAC, anio: D.anioActual, vista: 'inicio', foco: null, sem: null, gse: null, niv: null, rf: null,
-    sub: 'tray', gv: 'tray', gmom: 'T', gf: null, tf: null, pc: {}, glin: 'grad_empleab' };
+    sub: 'tray', gv: 'tray', gmom: 'T', gf: null, tf: null, pc: {}, glin: 'grad_empleab', isub: 'res' };
   const semDeAnio = a => { const ps = D.periodos.filter(x => x.a === +a); return ps.length ? ps[ps.length - 1].p : null; };
   /* Indicadores de estudiantes: los únicos que se pueden desglosar por nivel socioeconómico. */
   const GSE_IND = new Set(['sat_est', 'sat_serv', 'tut_cob', 'tut_ejec', 'tut_int', 'beca_cob']);
@@ -177,8 +181,8 @@
   const dimGrad = () => st.gse || (enGrad() ? st.gf : null);
   const claveGrad = car => car + (dimGrad() ? '|' + dimGrad() : '');
   /* Trayectoria: los indicadores por cohorte no se cruzan con tipo de ingreso ni cohorte; titulados, no con tipo de ingreso. */
-  const TRAY_IND = new Set(T ? ['tray_mat', 'tray_var', 'tray_ret', 'tray_des', 'tray_ret1', 'tray_grad', 'tray_gradt', 'tray_tit'] : []);
-  const TRAY_COH = new Set(['tray_ret1', 'tray_grad', 'tray_gradt', 'tray_des']);   // indicadores por cohorte de ingreso
+  const TRAY_IND = new Set(T ? ['tray_mat', 'tray_var', 'tray_ret', 'tray_perm', 'tray_des', 'tray_ret1', 'tray_grad', 'tray_gradt', 'tray_tit'] : []);
+  const TRAY_COH = new Set(['tray_ret1', 'tray_grad', 'tray_gradt', 'tray_des', 'tray_perm']);   // por cohorte de ingreso (y la permanencia): no se cruzan con tipo de ingreso ni cohorte
   const enTray = () => st.vista === 'estudiantes' && st.sub === 'tray';
   const dimTray = () => st.gse || (enTray() ? st.tf : null);
   const trayAdmite = (id, d) => !d || !((TRAY_COH.has(id) || id === 'tray_tit') && /^tipo_ingreso:/.test(d)) && !(TRAY_COH.has(id) && /^cohorte:/.test(d));
@@ -201,12 +205,12 @@
   function fmt(id, v) {
     if (v == null) return '—';
     const u = unidad(id);
-    return u === '%' ? num(v, 1) + ' %' : u === 'N.º' ? num(v, 0) : num(v, 1);
+    return u === '%' ? num(v, CAT[id].dec || 1) + ' %' : u === 'N.º' ? num(v, 0) : num(v, 1);
   }
   function valHTML(id, v) {
     if (v == null) return '—';
     const u = unidad(id);
-    return u === '%' ? num(v, 1) + '<small>%</small>' : esc(fmt(id, v));
+    return u === '%' ? num(v, CAT[id].dec || 1) + '<small>%</small>' : esc(fmt(id, v));
   }
   const tick = p => /^\d{4}$/.test(p) ? p : p.replace('-', ' ');
   function ordenP(p) { if (/^\d{4}$/.test(p)) return +p * 10; const [s, a] = p.split('-'); return +a * 10 + +s[0]; }
@@ -244,7 +248,8 @@
     if (c.corte && prev.a < c.corte && cur.a >= c.corte)
       return { cls: 'neu', html: `<span class="trend neu" title="La metodología cambió en ${c.corte}: no se compara con años anteriores">Cambio de escala</span>`, txt: 'cambio de escala' };
     if (cur.parcial && (c.acumula || c.unidad === 'N.º'))
-      return { cls: 'neu', html: '<span class="trend neu" title="El año todavía no termina: no se compara con un año completo">Año en curso</span>', txt: 'año en curso' };
+      return esAnual(cur.p) ? { cls: 'neu', html: '<span class="trend neu" title="El año todavía no termina: no se compara con un año completo">Año en curso</span>', txt: 'año en curso' }
+        : { cls: 'neu', html: '<span class="trend neu" title="El periodo todavía no termina: no se compara con uno cerrado">Periodo en curso</span>', txt: 'periodo en curso' };
     const rel = c.unidad === '%' ? Math.abs(d) : Math.abs(d) / Math.max(Math.abs(prev.v), 1);
     const sig = rel >= c.umbral;
     const dir = !sig ? 0 : d > 0 ? 1 : -1;
@@ -294,8 +299,14 @@
       case 'tray_var': return 'Frente a la matrícula del año anterior';
       case 'tray_ret': return `${num(k)} de ${num(n)} estudiantes` + (p.parcial ? ' - año en curso' : '');
       case 'tray_des': return `${num(k)} de ${num(n)} estudiantes`;
+      case 'tray_perm': return `${num(k)} de ${num(n)} estudiantes nuevos pasan a segundo nivel` + (p.parcial ? ' - periodo en curso' : '');
+      case 'doc_afin': return `${num(k, k % 1 ? 2 : 0)} de ${num(n)} asignaturas afines` + (p.parcial ? ' - periodo en curso' : '');
+      case 'prod_id': return `${num(k)} de ${num(n)} productos`;
+      case 'inv_proy': return `${num(p.ej)} en ejecución y ${num(p.fin)} finalizados`;
+      case 'prod_total': case 'pub_total': case 'prod_aut': case 'prod_lib': case 'prod_cap': case 'prod_pon': case 'prod_proc': case 'inv_ini':
+        return p.parcial ? 'Año en curso: aún puede crecer' : '';
       case 'tray_ret1': return `${num(k)} de ${num(n)} estudiantes de la cohorte`;
-      case 'tray_grad': case 'tray_gradt': return `${num(k)} titulados de ${num(n)} que ingresaron`;
+      case 'tray_grad': case 'tray_gradt': return `${num(k)} titulados de ${num(n)} de la cohorte`;
       case 'tray_tit': return p.parcial ? 'Año en curso: aún puede crecer' : '';
       case 'perf_n': return p.parcial ? 'Año en curso: aún puede crecer' : 'Base de los porcentajes del perfil';
       case 'perf_muj': case 'perf_gse': case 'perf_etn': case 'perf_disc': case 'perf_fuera': case 'perf_edad':
@@ -552,7 +563,7 @@
     o = o || {};
     const c = CAT[id], m = medir(id, st.car), cur = m.cur;
     const tag = o.link ? 'button type="button"' : 'div';
-    const attrs = o.link ? ` data-go="${c.vista}" data-foco="${id}"${c.sub ? ` data-sub="${c.sub}"` : ''}${c.gv ? ` data-gv="${c.gv}"` : ''}` : '';
+    const attrs = o.link ? ` data-go="${c.vista}" data-foco="${id}"${c.sub ? ` data-sub="${c.sub}"` : ''}${c.isub ? ` data-isub="${c.isub}"` : ''}${c.gv ? ` data-gv="${c.gv}"` : ''}` : '';
     // Todas las tarjetas llevan ícono y no muestran el minigráfico (la evolución está en los gráficos de cada vista)
     const ico = `<span class="kico" aria-hidden="true"><svg viewBox="0 0 24 24">${KPI_IC[id] || KPI_IC._}</svg></span>`;
     const lbl = `<div class="top">${ico}<span class="lbl">${c.tipo ? `<span style="color:var(--acento)">${esc(c.tipo)} - </span>` : ''}${esc(c.nombre)}</span>${info(id)}</div>`;
@@ -738,6 +749,65 @@
       D.ind.tray_tit[k] = Object.keys(ti).sort().map(y => ({ p: y, a: +y, l: y, v: ti[y], parcial: +y === D.anioActual }));
     });
   }
+  /* Indicadores con la metodología de los informes del SGA (scripts/pipeline/05c_informes_sga.py): el SGA decide
+     quién está en la cohorte, quién deserta, quién se titula, qué asignatura es afín y qué producto o proyecto es de la
+     carrera; aquí solo se arman las series. Las tasas se truncan a dos decimales, como en los informes. */
+  const trunc2 = (k, n) => n ? Math.floor(k * 10000 / n + 1e-9) / 100 : null;
+  const lblSem = p => (INF && INF.etiquetas[p]) || tick(p);
+  const ordenK = o => Object.keys(o).sort((a, b) => ordenP(a) - ordenP(b));
+  const ptA = (y, v, extra) => Object.assign({ p: y, a: +y, l: y + (+y === D.anioActual ? ' (parcial)' : ''), v }, +y === D.anioActual ? { parcial: true } : {}, extra);
+  if (INF && T) {
+    // Deserción (FR0122, consulta R16), titulación (FR0125, consulta R19) y permanencia (FR0087, consulta R02)
+    ['tray_des', 'tray_grad', 'tray_gradt', 'tray_perm'].forEach(id => { D.ind[id] = {}; });
+    const ptC = (c, k, n) => ({ p: c, a: +c.slice(-4), l: lblCoh(c), v: trunc2(k, n), n, num: k });
+    Object.entries(INF.des).forEach(([k, co]) => { D.ind.tray_des[k] = ordenK(co).map(c => ptC(c, co[c][1], co[c][0])); });
+    Object.entries(INF.tit).forEach(([k, co]) => {
+      D.ind.tray_grad[k] = ordenK(co).map(c => ptC(c, co[c][1], co[c][0]));
+      D.ind.tray_gradt[k] = ordenK(co).map(c => ptC(c, co[c][2], co[c][0]));
+    });
+    Object.entries(INF.perm).forEach(([k, per]) => {
+      D.ind.tray_perm[k] = ordenK(per).map(p => Object.assign({ p, a: +p.slice(-4), l: lblSem(p), v: trunc2(per[p][1], per[p][0]), n: per[p][0], num: per[p][1] },
+        INF.enCurso.includes(p) ? { parcial: true } : {}));
+    });
+  }
+  if (INF) {
+    // Afinidad del personal académico (FR0108, consulta R11), por periodo
+    // Mientras no llegue la consulta según el CACES, los datos son los del reporte FR0108 del SGA: la definición lo dice.
+    if (INF.afinMetodo !== 'CACES') Object.assign(CAT.doc_afin, {
+      definicion: 'Porcentaje de las asignaturas profesionalizantes y de integración curricular (ejes 3 y 43 de la malla) ofertadas en el periodo cuyo docente principal tiene, en el campo detallado de la asignatura, al menos uno de tres criterios: título de cuarto nivel, artículo publicado o proyecto de investigación o vinculación. Cálculo del reporte FR0108 del SGA con la corrección del 04-11-2026 (los campos con el mismo nombre son equivalentes y una asignatura sin campo detallado en la malla no es afín). Provisional: se reemplazará por el cálculo del Modelo genérico del CACES (indicador 8). El SGA no registra el campo de la experiencia profesional: ese criterio no se puede medir.',
+      formula: 'APA = 100 × TAAF / TA: asignaturas con afinidad mayor que 0 en el campo detallado / asignaturas de los ejes 3 y 43 ofertadas',
+      fuente: 'SGA - Informe FR0108 (consulta R11)' });
+    D.ind.doc_afin = {};
+    Object.entries(INF.afin).forEach(([k, per]) => {
+      D.ind.doc_afin[k] = ordenK(per).map(p => Object.assign({ p, a: +p.slice(-4), l: lblSem(p), v: trunc2(per[p][1], per[p][0]), n: per[p][0], num: per[p][1] },
+        INF.enCurso.includes(p) ? { parcial: true } : {}));
+    });
+    // Producción científica (FR0128, consulta R23): reemplaza a la del extracto de producción
+    const PROD = {
+      prod_total: x => x.total, prod_aut: x => x.aut, prod_proy: x => x.proy,
+      doc_prod: x => x.planta ? [pct1(Math.min(x.autArt, x.planta), x.planta), x.planta, Math.min(x.autArt, x.planta)] : null,
+      prod_id: x => x.total ? [pct1(x.id, x.total), x.total, x.id] : null,
+      pub_total: x => x.art.n, pub_q12: x => x.art.cuartil.Q1 + x.art.cuartil.Q2, pub_proy: x => x.art.proy,
+      pub_alto: x => x.art.n ? [pct1(x.t.AM, x.art.n), x.art.n, x.t.AM] : null,
+      pub_est: x => x.art.n ? [pct1(x.art.est, x.art.n), x.art.n, x.art.est] : null,
+      prod_lib: x => x.t.LI, prod_cap: x => x.t.CA, prod_pon: x => x.t.PO, prod_proc: x => x.t.PR
+    };
+    Object.keys(PROD).forEach(id => { D.ind[id] = {}; });
+    Object.entries(INF.prod).forEach(([k, pr]) => {
+      const ys = Object.keys(pr.anios).sort();
+      Object.entries(PROD).forEach(([id, f]) => {
+        D.ind[id][k] = ys.map(y => { const r = f(pr.anios[y]); return r == null ? null : Array.isArray(r) ? ptA(y, r[0], { n: r[1], num: r[2] }) : ptA(y, r); }).filter(Boolean);
+      });
+    });
+    // Proyectos de investigación (FR0127, consulta R22)
+    ['inv_proy', 'inv_ini', 'inv_prof'].forEach(id => { D.ind[id] = {}; });
+    Object.entries(INF.proy).forEach(([k, pr]) => {
+      const ys = Object.keys(pr.anios).sort();
+      D.ind.inv_proy[k] = ys.map(y => ptA(y, pr.anios[y].total, { ej: pr.anios[y].ej, fin: pr.anios[y].fin }));
+      D.ind.inv_ini[k] = ys.map(y => ptA(y, pr.anios[y].ini));
+      D.ind.inv_prof[k] = ys.map(y => ptA(y, pr.anios[y].prof));
+    });
+  }
   /* Perfil: filtro cruzado sobre la tabla de combinaciones (FACS_PERFIL.filas).
      Cada fila: [año, carrera (índice en FACS_PERFIL.carreras), índice de cada dimensión..., n estudiantes].
      El nivel socioeconómico usa el filtro global st.gse; las demás dimensiones, st.pc. */
@@ -888,7 +958,7 @@
       panelVer('Satisfacción de los grupos de interés', 'grupos', sat.length ? hbars(sat, { max: 100, color: '#335f7f', tip: r => `${r.a}: ${num(r.v, 1)} % (${r.n})` }) : '<div class="empty"><b>Sin datos</b></div>',
         'Porcentaje de valoraciones positivas, última medición') +
       `</div><div class="sec"><h3>Investigación, vinculación y servicios de apoyo</h3></div><div class="grid3 arriba">` +
-      panelVer('Artículos publicados por año', 'investigacion', slot(el => columnChart(el, { xs: columnasDe('pub_total'), h: 210 })), 'Artículos únicos aprobados - * año en curso') +
+      panelVer('Producción científica por año', 'investigacion', slot(el => columnChart(el, { xs: columnasTipos(c, TIPOS.map(t => t[0])), h: 210 })), 'Artículos, libros, capítulos, ponencias y proceedings (informe FR0128) - * año en curso') +
       panelVer('Proyectos de vinculación por año', 'vinculacion', slot(el => columnChart(el, { xs: columnasDe('vin_proy'), h: 210 })), 'Proyectos en ejecución en algún momento del año') +
       panelVer('Servicios de apoyo', 'apoyo', apoyo.length ? hbars(apoyo, { max: 100, color: '#4597bf', tip: r => `${r.a}: ${num(r.v, 1)} % (${r.n})` }) : '<div class="empty"><b>Sin datos</b></div>',
         'Cobertura y satisfacción, última medición') +
@@ -1205,13 +1275,15 @@
   function insTray() {
     const out = [], c = st.car;
     if (!T) return out;
-    const r = medir('tray_ret', c), d = medir('tray_des', c);
+    const r = medir('tray_ret', c), d = medir('tray_des', c), pe = medir('tray_perm', c);
     const rc = r.pts.filter(p => !p.parcial), rr = rc[rc.length - 1], rp = rc[rc.length - 2];
     if (rr) {
       let s = `La retención${deGrupo()} es ${B(fmt('tray_ret', rr.v))} en ${rr.a}`;
       if (rp) { const t = tendencia('tray_ret', rr, rp); s += t.dir ? `, ${t.dir > 0 ? 'sube' : 'baja'} ${B(num(Math.abs(t.d), 1) + ' pp')} frente a ${rp.a}` : `, estable frente a ${rp.a}`; }
       out.push(s + '.');
     }
+    const pc = pe.pts.filter(p => !p.parcial), pu = pc[pc.length - 1];
+    if (pu) out.push(`En ${esc(pu.l)}, ${B(fmt('tray_perm', pu.v))} de los estudiantes que ingresaron a primer nivel el periodo anterior pasó a segundo nivel (${num(pu.num)} de ${num(pu.n)}; permanencia del informe FR0087).`);
     if (d.cur) out.push(`De la cohorte ${esc(d.cur.p.replace('-', ' '))}, ${B(fmt('tray_des', d.cur.v))} ya no continuaba sus estudios a mitad de la carrera: ` +
       `${num(d.cur.num)} de ${num(d.cur.n)} estudiantes que iniciaron el primer nivel (deserción a mitad de carrera).`);
     const g = medir('tray_grad', c).cur, gt = medir('tray_gradt', c).cur;
@@ -1223,11 +1295,11 @@
 
   function vTray() {
     if (!T) return '<div class="empty"><b>Faltan los datos de trayectoria</b>No se cargó data/trayectoria-data.js.</div>';
-    const c = st.car, ids = ['tray_mat', 'tray_var', 'tray_ret', 'tray_ret1', 'tray_des', 'tray_grad', 'tray_gradt', 'tray_tit'];
+    const c = st.car, ids = ['tray_mat', 'tray_var', 'tray_ret', 'tray_perm', 'tray_ret1', 'tray_des', 'tray_grad', 'tray_gradt', 'tray_tit'];
     const dim = dimTray(), k = dim ? c + '|' + dim : c;
 
     const barra = filtrosEst('tray', Object.keys(T.anual), ['gse', 'sexo', 'tipo_ingreso'],
-      `Un filtro a la vez. La graduación y la retención de primer año se miden por cohorte: no se cruzan con tipo de ingreso.` +
+      `Un filtro a la vez. La permanencia, la deserción, la graduación y la retención de primer año se miden por cohorte o periodo de ingreso: no se cruzan con tipo de ingreso.` +
       `${st.niv ? ' El nivel de la carrera no aplica a la trayectoria: se muestran todos.' : ''}`);
 
     // Matrícula por año (por carrera) y composición por tipo de ingreso
@@ -1249,32 +1321,36 @@
     const ti = (T.tit[trayAdmite('tray_tit', dim) && dim ? k : c]) || {};
     const xsTit = Object.keys(ti).filter(y => +y <= anioCorte()).sort().map(y => ({ p: y, l: y, a: +y, parcial: +y === D.anioActual, segs: [{ k: 'Titulados', v: ti[y], color: '#4597bf' }] }));
 
-    // Tabla por cohorte
+    // Tabla por cohorte: deserción y titulación de los informes del SGA (R16, R19); retención de primer año del extracto
     const kc = dim && trayAdmite('tray_grad', dim) ? k : c, co = T.coh[kc] || {};
-    const cs = Object.keys(co).filter(x => +x.slice(-4) <= anioCorte()).sort((a, b) => ordenP(a) - ordenP(b));
-    const tCoh = cs.length ? `<div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="res"><thead><tr><th>Cohorte</th><th class="n">Ingresaron</th><th class="n">Retención 1.er año</th><th class="n">Deserción a mitad</th><th class="n">Titulados</th><th class="n">Graduación oportuna</th><th class="n">Graduación total</th><th>Ventana</th></tr></thead><tbody>` +
-      cs.map(x => { const f = co[x], de = ((T.des || {})[kc] || {})[x];
-        return `<tr><td>${esc(x.replace('-', ' '))}</td><td class="n">${num(f[0])}</td><td class="n">${f[1] ? num(pct1(f[2], f[1]), 1) + ' %' : '—'}</td>` +
-        `<td class="n">${de ? num(pct1(de[1], de[0]), 1) + ' %' : '—'}</td><td class="n">${num(f[3])}</td>` +
-        `<td class="n">${f[5] ? '<b>' + num(pct1(f[4], f[0]), 1) + ' %</b>' : '—'}</td><td class="n">${f[5] ? num(pct1(f[3], f[0]), 1) + ' %' : '—'}</td>` +
-        `<td>${f[5] ? '<span class="pill fin">Cerrada</span>' : '<span class="pill ej">En curso</span>'}</td></tr>`; }).join('') + '</tbody></table></div>'
+    const dI = (INF && INF.des[kc]) || {}, tI = (INF && INF.tit[kc]) || {};
+    const cs = [...new Set(Object.keys(co).concat(Object.keys(dI), Object.keys(tI)))].filter(x => +x.slice(-4) <= anioCorte()).sort((a, b) => ordenP(a) - ordenP(b));
+    const t2 = (a, b) => b ? num(trunc2(a, b), 2) + ' %' : '—';
+    const tCoh = cs.length ? `<div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="res"><thead><tr><th>Cohorte</th><th class="n">En primer nivel</th><th class="n">Retención 1.er año</th><th class="n">Deserción a mitad</th><th class="n">Titulados en el plazo</th><th class="n">Graduación oportuna</th><th class="n">Graduación total</th><th>Plazo de titulación</th></tr></thead><tbody>` +
+      cs.map(x => { const f = co[x], de = dI[x], ti = tI[x], n0 = (de || ti || f || [])[0];
+        return `<tr><td>${esc(x.replace('-', ' '))}</td><td class="n">${n0 != null ? num(n0) : '—'}</td><td class="n">${f && f[1] ? num(pct1(f[2], f[1]), 1) + ' %' : '—'}</td>` +
+        `<td class="n">${de ? t2(de[1], de[0]) : '—'}</td><td class="n">${ti ? num(ti[1]) : '—'}</td>` +
+        `<td class="n">${ti ? '<b>' + t2(ti[1], ti[0]) + '</b>' : '—'}</td><td class="n">${ti ? t2(ti[2], ti[0]) : '—'}</td>` +
+        `<td>${ti ? '<span class="pill fin">Cerrado</span>' : '<span class="pill ej">En curso</span>'}</td></tr>`; }).join('') + '</tbody></table></div>'
       : '<div class="empty"><b>Sin cohortes para este grupo</b></div>';
 
-    return barra + `<div class="kpis ${ids.length === 5 ? 'k5' : 'k4'}">${ids.map(id => kpi(id, { icono: true })).join('')}</div>` + lectura(insTray()) +
+    return barra + `<div class="kpis ${ids.length === 5 || ids.length === 9 ? 'k5' : 'k4'}">${ids.map(id => kpi(id, { icono: true })).join('')}</div>` + lectura(insTray()) +
       `<div class="grid2">` +
       panel('Evolución de la matrícula', 'tray_mat', slot(el => columnChart(el, { xs: xsMat, legend: legMat, h: 225 })), 'Estudiantes únicos matriculados por año') +
       panel('Composición de la matrícula', 'tray_mat', slot(el => columnChart(el, { xs: xsComp, legend: legComp, ymax: 100, pct: true, sinTotal: true, fmt: v => num(v, 1) + ' %', h: 225 })),
         'Nuevo ingreso, continuidad y reingreso, sobre las matrículas de los periodos del año') +
       `</div><div class="grid2">` +
       panel('Retención estudiantil', 'tray_ret', slot(el => lineChart(el, 'tray_ret', { h: 215 })), 'Por año. Punto hueco: año en curso') +
-      panel('Deserción a mitad de la carrera', 'tray_des', slot(el => lineChart(el, 'tray_des', { h: 215 })), 'Por cohorte de ingreso: no continuaban sus estudios en el 5.º semestre de la cohorte') +
+      panel('Permanencia: de la primera a la segunda matrícula', 'tray_perm', slot(el => lineChart(el, 'tray_perm', { h: 215 })), 'Por periodo: estudiantes nuevos de primer nivel del periodo anterior que pasan a segundo nivel (informe FR0087). Punto hueco: periodo en curso') +
       `</div><div class="grid2">` +
-      panel('Graduación oportuna por cohorte', 'tray_grad', slot(el => lineChart(el, 'tray_grad', { h: 215 })), 'Cohortes de ingreso con la ventana de graduación cerrada') +
-      panel('Retención de primer año por cohorte', 'tray_ret1', slot(el => lineChart(el, 'tray_ret1', { h: 215 })), 'Porcentaje de la cohorte que sigue al año de ingresar') +
-      `</div><div class="grid2 wl arriba">` +
-      panel('Seguimiento por cohorte de ingreso', 'tray_grad', tCoh, 'Duración: 9 niveles - graduación oportuna = duración + 2 semestres') +
-      panel('Titulados por año', 'tray_tit', slot(el => columnChart(el, { xs: xsTit, h: 225 })), trayAdmite('tray_tit', dim) ? '' : 'Sin desglose por tipo de ingreso: muestra a todos') +
-      `</div>` + tabla(ids);
+      panel('Deserción a mitad de la carrera', 'tray_des', slot(el => lineChart(el, 'tray_des', { h: 215 })), 'Por cohorte: no continuaban sus estudios a mitad de la carrera (Ai+4 en 8 niveles, Ai+5 en 9 niveles; informe FR0122)') +
+      panel('Graduación oportuna por cohorte', 'tray_grad', slot(el => lineChart(el, 'tray_grad', { h: 215 })), 'Cohortes cuyo plazo de titulación (Ai + duración + 2 semestres) ya terminó (informe FR0125)') +
+      `</div><div class="grid2">` +
+      panel('Retención de primer año por cohorte', 'tray_ret1', slot(el => lineChart(el, 'tray_ret1', { h: 215 })), 'Porcentaje de la cohorte de nuevo ingreso que sigue al año de ingresar') +
+      panel('Titulados por año', 'tray_tit', slot(el => columnChart(el, { xs: xsTit, h: 215 })), trayAdmite('tray_tit', dim) ? '' : 'Sin desglose por tipo de ingreso: muestra a todos') +
+      `</div>` +
+      panel('Seguimiento por cohorte de ingreso', 'tray_grad', tCoh, 'Cohorte: estudiantes con alguna asignatura de primer nivel en el periodo, sin retiro de matrícula. Deserción y titulación con el cálculo de los informes FR0122 y FR0125 del SGA (truncadas a dos decimales); la retención de primer año se mide sobre los estudiantes de nuevo ingreso') +
+      tabla(ids);
   }
 
   /* ---------------- Vista 1 - Perfil estudiantil sociodemográfico ----------------
@@ -1587,7 +1663,7 @@
   function vDocentes() {
     if (!DOC) return '<div class="empty"><b>Faltan los datos de docentes</b>No se cargó data/docentes-data.js.</div>';
     const c = st.car, dd = docDet(c), d = dd && dd.d, y = dd && dd.y;
-    const ids = ['doc_n', 'doc_phd', 'doc_maest', 'doc_sinmae', 'doc_tc', 'doc_eval', 'doc_cap', 'sat_doc'];
+    const ids = ['doc_n', 'doc_phd', 'doc_maest', 'doc_sinmae', 'doc_tc', 'doc_afin', 'doc_eval', 'doc_cap', 'sat_doc'];
     const notaY = y ? `${y}${+y === DOC.anioParcial ? ` (año en curso: ${semCurso()})` : ''}` : '';
     const barras = (filas, o) => {
       o = o || {};
@@ -1612,7 +1688,20 @@
     const cap = d && d.cap;
     const capRows = cap ? [['Al menos un curso pedagógico', cap.ped], ['Al menos un curso científico', cap.cien]].map(([a, n]) => ({ a, v: pct1(n, cap.n), n })) : [];
 
-    return `<div class="kpis k4">${ids.map(id => kpi(id, { icono: true })).join('')}</div>` + lectura(insDoc()) +
+    // Afinidad del personal académico (informe FR0108): con una carrera, sus asignaturas; con la facultad o una modalidad, sus carreras
+    const af = medir('doc_afin', c).cur;
+    let afDet = '<div class="empty"><b>Sin asignaturas de los ejes 3 y 43 en el periodo</b></div>';
+    if (af && esAgregado(c)) {
+      const rows = miembros(c).map(k => ({ k, p: (D.ind.doc_afin[k] || []).find(x => x.p === af.p) })).filter(x => x.p)
+        .map(x => ({ a: CORTO[x.k], v: x.p.v, n: x.p.n, num: x.p.num, car: x.k })).sort((a, b) => b.v - a.v);
+      afDet = hbars(rows, { max: 100, color: COL[c], fmt: v => num(v, 2) + ' %', tip: r => `${r.a}: ${num(r.num, r.num % 1 ? 2 : 0)} de ${num(r.n)} asignaturas afines (${num(r.v, 2)} %)` });
+    } else if (af) {
+      const filas = ((INF.afinDet || {})[c] || {})[af.p] || [];
+      afDet = `<div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="res"><thead><tr><th>Asignatura</th><th>Nivel</th><th>Campo detallado</th><th class="n">Afinidad</th><th>Algún paralelo afín</th><th class="n">Paralelos</th></tr></thead><tbody>` +
+        filas.map(([a, nv, cd, v, f, par, pdoc]) => `<tr><td>${esc(a)}</td><td class="per">${esc(nv)}</td><td class="per">${cd ? esc(cd) : '<i>Sin campo detallado en la malla</i>'}</td>` +
+          `<td class="n">${pdoc ? num(v, 2) + ' %' : '<span class="per">Sin docente principal</span>'}</td><td>${f ? '<span class="pill fin">Sí</span>' : '<span class="pill ej">No</span>'}</td><td class="n">${num(par)}</td></tr>`).join('') + '</tbody></table></div>';
+    }
+    return `<div class="kpis k5">${ids.map(id => kpi(id, { icono: true })).join('')}</div>` + lectura(insDoc()) +
       `<div class="grid2">` +
       panel('Evolución de la planta docente', 'doc_n', slot(el => lineChart(el, 'doc_n', { h: 225 })), 'Docentes únicos por año - punto hueco: año en curso') +
       panel('Nivel académico', 'doc_cuarto', slot(el => columnChart(el, { xs: xsNiv, legend: legNiv, ymax: 100, pct: true, sinTotal: true, fmt: v => num(v, 1) + ' %', h: 225 })), 'Título más alto verificado en el SGA, por año') +
@@ -1628,7 +1717,11 @@
       panel('Tipo de capacitación', 'doc_cap', capRows.length ? hbars(capRows, { max: 100, color: '#4597bf', fmt: v => num(v, 1) + ' %', tip: r => `${r.a}: ${num(r.n)} docentes` }) +
         (cap.horas != null ? `<p class="ph-note" style="margin:8px 0 0">Los docentes capacitados suman en promedio ${num(cap.horas, 1)} horas en 12 meses.</p>` : '') : '<div class="empty"><b>Sin datos para este año</b></div>',
         `${notaY} - porcentaje de docentes con al menos un curso de cada tipo en los últimos 12 meses`) +
-      `</div></div><div class="hsub" style="margin:4px 0 8px">Perfil demográfico del cuerpo docente</div><div class="grid2 arriba">` +
+      `</div></div><div class="grid2 wl arriba">` +
+      panel('Afinidad del personal académico', 'doc_afin', slot(el => lineChart(el, 'doc_afin', { h: 230 })), `Por periodo: asignaturas de los ejes 3 y 43 con docente afín al campo detallado (${INF && INF.afinMetodo === 'CACES' ? 'Modelo genérico del CACES, indicador 8' : 'reporte FR0108 del SGA'}). Punto hueco: periodo en curso`) +
+      panel(esAgregado(c) ? 'Afinidad por carrera' : 'Afinidad por asignatura', 'doc_afin', afDet,
+        af ? `${esc(af.l)} - ${esAgregado(c) ? 'porcentaje de asignaturas afines de cada carrera' : (INF.afinMetodo === 'CACES' ? 'afinidad = porcentaje de paralelos con docente afín al campo detallado; TAAF suma esos promedios (CACES)' : 'afinidad en el campo detallado: promedio de los paralelos (0, 33, 67 o 100 % por docente; reporte del SGA)')}` : '') +
+      `</div><div class="hsub" style="margin:4px 0 8px">Perfil demográfico del cuerpo docente</div><div class="grid2 arriba">` +
       panel('Procedencia por provincia', 'doc_n', slot(el => {
         const filas = (d && d.provincia) || [], conteo = {}, tot = filas.reduce((s, [, n]) => s + n, 0);
         filas.forEach(([p, n]) => { conteo[p] = n; });
@@ -1641,7 +1734,7 @@
       panel('Autoidentificación étnica', 'doc_n', barras(d && d.etnia, { color: '#335f7f' }), notaY + ` - categorías con menos de ${DOC.kAnon} docentes agrupadas`) +
       panel('Discapacidad', 'doc_n', barras(d && d.disc, { color: '#335f7f', detalle: r => r.a === 'Con discapacidad' && d.disc_tipo && d.disc_tipo.length
         ? '\nPor tipo:\n' + d.disc_tipo.map(([t, n]) => `· ${t}: ${num(n)}`).join('\n') : '' }), notaY + ' - pasa el mouse sobre «Con discapacidad» para ver los tipos') +
-      `</div>` + tabla(['doc_n', 'doc_phd', 'doc_maest', 'doc_sinmae', 'doc_cuarto', 'doc_tc', 'doc_evalcob', 'doc_eval', 'doc_cap', 'doc_carga']);
+      `</div>` + tabla(['doc_n', 'doc_phd', 'doc_maest', 'doc_sinmae', 'doc_cuarto', 'doc_tc', 'doc_afin', 'doc_evalcob', 'doc_eval', 'doc_cap', 'doc_carga']);
   }
 
   /* ---------------- Vista 2 - Grupos de interés ---------------- */
@@ -1709,55 +1802,174 @@
       cur ? `${esc(cur.l)} - pulsa un nivel para filtrar el tablero` : '');
   }
 
-  /* ---------------- Vista 4 - Investigación ---------------- */
+  /* ---------------- Vista 4 - Investigación ----------------
+     Apartados (st.isub): resumen, uno por tipo de producto (informe FR0128 del SGA, consulta R23) y proyectos de
+     investigación (informe FR0127, consulta R22). Los productos y proyectos se listan sin nombres de autores. */
+  const ISUBS = [['res', 'Resumen'], ['art', 'Artículos científicos'], ['lib', 'Libros y capítulos de libro'],
+    ['pon', 'Ponencias'], ['proc', 'Proceedings'], ['proy', 'Proyectos de investigación']];
+  const TIPOS = [['AM', 'Artículos de impacto mundial', '#1c3247'], ['AR', 'Artículos de impacto regional', '#4597bf'], ['LI', 'Libros', '#f48521'],
+    ['CA', 'Capítulos de libro', '#f7b37a'], ['PO', 'Ponencias', '#7a5aa6'], ['PR', 'Proceedings', '#b9a6d6']];
+  const TIPO_NOM = Object.fromEntries(TIPOS.map(([t, n]) => [t, n]));
+  const ISUB_TIPOS = { art: ['AM', 'AR'], lib: ['LI', 'CA'], pon: ['PO'], proc: ['PR'] };
+  const ISUB_ID = { lib: ['prod_lib', 'prod_cap'], pon: ['prod_pon'], proc: ['prod_proc'] };
+  const ISUB_UNO = { lib: ['libro o capítulo', 'libros y capítulos de libro'], pon: ['ponencia', 'ponencias'], proc: ['proceeding', 'proceedings'] };
+  let prodTodos = true;   // listados: «Hasta» el año elegido o «Solo» ese año
+  const deCarrera = (cars, c) => { const m = miembros(c); return cars.split('+').some(k => m.includes(k)); };
+  const carNom = s => s.split('+').map(k => CORTO[k] || k).join(', ');
+  const deLa = c => c === FAC ? 'de la facultad' : esAgregado(c) ? 'de la modalidad' : 'de la carrera';
+  function columnasTipos(c, tipos) {
+    const pr = INF && INF.prod[c]; if (!pr) return [];
+    return Object.keys(pr.anios).filter(y => +y <= st.anio).sort().map(y => ({ p: y, l: y, a: +y, parcial: +y === D.anioActual,
+      segs: TIPOS.filter(t => tipos.includes(t[0])).map(([t, nom, col]) => ({ k: nom, v: pr.anios[y].t[t], color: col })) }));
+  }
+  const legTipos = tipos => tipos.length < 2 ? '' : '<div class="legend">' + TIPOS.filter(t => tipos.includes(t[0])).map(([, nom, col]) => `<span><i class="box" style="background:${col}"></i>${esc(nom)}</span>`).join('') + '</div>';
+  const segTodos = () => `<div class="segbtns"><button type="button" class="segbtn ${prodTodos ? 'on' : ''}" data-pt="1">Hasta ${st.anio}</button><button type="button" class="segbtn ${!prodTodos ? 'on' : ''}" data-pt="0">Solo ${st.anio}</button></div>`;
+  const enRango = a => a <= st.anio && (prodTodos || a === st.anio);
+  const sumaTipos = (c, tipos) => { const pr = INF.prod[c]; return pr ? Object.keys(pr.anios).filter(y => enRango(+y)).reduce((s, y) => s + tipos.reduce((t, q) => t + pr.anios[y].t[q], 0), 0) : 0; };
+  const doiHTML = d => /^10\.\S+$/.test(d) ? `<a href="https://doi.org/${encodeURI(d)}" target="_blank" rel="noopener">${esc(d)}</a>` : esc(d);
+
+  /* Listado de productos: [tipo, año, título, medio, bases, DOI/ISBN, línea, proyecto, grupo, nivel, cuartil, coautoría estudiantil, acceso abierto, carreras] */
+  function tablaProductos(c, tipos, titulo, medio) {
+    const filas = INF.prodItems.filter(f => tipos.includes(f[0]) && enRango(f[1]) && deCarrera(f[13], c))
+      .sort((a, b) => b[1] - a[1] || a[2].localeCompare(b[2]));
+    const art = tipos.includes('AM'), conCar = esAgregado(c), mixto = !art && tipos.length > 1, conMedio = !(tipos.length === 1 && tipos[0] === 'LI');
+    const cuerpo = filas.length ? `<div class="tbl-wrap" style="max-height:460px;overflow-y:auto"><table class="res"><thead><tr><th class="n">Año</th><th>Título</th>` +
+      (art ? '<th>Impacto</th>' : mixto ? '<th>Tipo</th>' : '') + (conMedio ? `<th>${esc(medio)}</th>` : '') + (art ? '<th>Cuartil</th>' : '') + `<th>DOI / ISBN</th><th>Línea de investigación</th><th>De un proyecto</th>${conCar ? '<th>Carrera</th>' : ''}</tr></thead><tbody>` +
+      filas.map(f => `<tr><td class="n">${f[1]}</td><td style="min-width:260px">${esc(f[2])}</td>` +
+        (art ? `<td class="per">${f[0] === 'AM' ? 'Mundial' : 'Regional'}</td>` : mixto ? `<td class="per">${f[0] === 'LI' ? 'Libro' : 'Capítulo'}</td>` : '') +
+        (conMedio ? `<td class="per" style="min-width:160px">${f[3] ? esc(f[3]) : '—'}${f[4] ? `<br><small>${esc(f[4])}</small>` : ''}</td>` : '') +
+        (art ? `<td class="per">${esc(/^Q\d$/.test(f[10]) || /^WOS/.test(f[10]) ? f[10] : '—')}</td>` : '') +
+        `<td class="per">${f[5] ? doiHTML(f[5]) : '—'}</td><td class="per">${esc(f[6])}</td><td>${f[7] ? '<span class="pill fin">Sí</span>' : '<span class="per">No</span>'}</td>` +
+        `${conCar ? `<td class="per">${esc(carNom(f[13]))}</td>` : ''}</tr>`).join('') + '</tbody></table></div>'
+      : `<div class="empty"><b>Sin ${esc(titulo.toLowerCase())} ${prodTodos ? 'hasta' : 'en'} ${st.anio}</b></div>`;
+    return `<div class="panel"><div class="ph"><h3>${esc(titulo)}</h3><span style="flex:1"></span>${segTodos()}</div>` +
+      `<p class="ph-note">${num(filas.length)} ${filas.length === 1 ? 'producto' : 'productos'} ${prodTodos ? 'hasta' : 'en'} ${st.anio}, del más reciente al más antiguo. Un producto de varios docentes de la carrera aparece una vez.</p>${cuerpo}</div>`;
+  }
+  /* Productos por línea de investigación (en el rango del listado) */
+  function porLinea(c, tipos) {
+    const cnt = {};
+    INF.prodItems.filter(f => tipos.includes(f[0]) && enRango(f[1]) && deCarrera(f[13], c)).forEach(f => { const l = f[6] || 'NO REGISTRA'; cnt[l] = (cnt[l] || 0) + 1; });
+    const rows = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([a, v]) => ({ a: a[0] + a.slice(1).toLowerCase(), v }));
+    return hbars(rows, { color: '#335f7f', fmt: v => num(v), tip: r => `${r.a}: ${num(r.v)} productos` });
+  }
+
   function insInvest() {
-    const out = [], c = st.car, s = serie('pub_total', c).filter(p => p.a <= st.anio);
-    const full = s.filter(p => !p.parcial), ref = full[full.length - 1];
-    if (ref) {
+    const out = [], c = st.car;
+    const s = serie('prod_total', c).filter(p => p.a <= st.anio), full = s.filter(p => !p.parcial), ref = full[full.length - 1];
+    const pr = INF && INF.prod[c];
+    if (ref && pr) {
+      const t = pr.anios[ref.p].t, art = t.AM + t.AR;
+      out.push(`En ${ref.a} los docentes ${deLa(c)} publicaron ${B(num(ref.v) + ' productos científicos')}: ${num(art)} artículos, ${num(t.LI)} libros, ` +
+        `${num(t.CA)} capítulos de libro, ${num(t.PO)} ponencias y ${num(t.PR)} proceedings.`);
       const base = full.find(p => p.a === ref.a - 2);
-      if (base && base.v > 0 && ref.v / base.v >= 1.5) out.push(`En ${ref.a} se publicaron ${B(num(ref.v) + ' artículos')}, ${B(num(ref.v / base.v, 1).replace(',0', '') + ' veces')} los de ${base.a} (${num(base.v)}).`);
-      else out.push(`En ${ref.a} se publicaron ${B(num(ref.v) + ' artículos')}${base ? ` (${num(base.v)} en ${base.a})` : ''}.`);
+      if (base && base.v > 0) out.push(`Son ${B(num(ref.v / base.v, 1).replace(',0', '') + ' veces')} los productos de ${base.a} (${num(base.v)}).`);
     }
     const dp = medir('doc_prod', c).cur;
-    if (dp) out.push(`${B(num(dp.v / 10, 1).replace(',0', '') + ' de cada 10')} docentes de la carrera publicaron al menos un artículo en ${esc(dp.l.replace(' (parcial)', ''))}${dp.parcial ? ', con el año todavía en curso' : ''}.`);
+    if (dp) out.push(`${B(num(dp.v / 10, 1).replace(',0', '') + ' de cada 10')} docentes ${deLa(c)} publicaron al menos un artículo en ${esc(dp.l.replace(' (parcial)', ''))}${dp.parcial ? ', con el año todavía en curso' : ''}.`);
     const pa = medir('pub_alto', c).cur;
-    if (pa) out.push(pa.v < 50 ? `Solo ${B(fmt('pub_alto', pa.v))} de los artículos llega a revistas de impacto mundial (Scopus o Web of Science); el resto se publica en revistas regionales.`
-      : `${B(fmt('pub_alto', pa.v))} de los artículos se publica en revistas de impacto mundial (Scopus o Web of Science).`);
-    const pe = medir('pub_est', c);
-    if (pe.cur && pe.prev) out.push(`La coautoría con estudiantes ${pe.cur.v >= pe.prev.v ? 'crece' : 'cae'} a ${B(fmt('pub_est', pe.cur.v))} de los artículos (${fmt('pub_est', pe.prev.v)} en ${esc(pe.prev.l.replace(' (parcial)', ''))}).`);
+    if (pa) out.push(`${B(fmt('pub_alto', pa.v))} de los artículos de ${esc(pa.l.replace(' (parcial)', ''))} se publicó en bases de impacto mundial (p. ej. Scopus o Web of Science); el resto, en bases de impacto regional.`);
     return out;
   }
-  let cuTodos = true;
-  function vInvest() {
-    const c = st.car, ids = ['pub_total', 'doc_prod', 'pub_alto', 'pub_q12', 'pub_est'];
-    const NIV = [['Científico (Scopus / WoS)', '#1c3247'], ['Regional (Latindex)', '#4597bf'], ['Divulgativo y memorias', '#f7964d']];
-    const xs = serie('pub_total', c).filter(p => p.a <= st.anio).map(p => ({ p: p.p, l: p.l, a: p.a, parcial: p.parcial,
-      segs: NIV.map(([k, col]) => ({ k, v: (D.det.pub_nivel[c][p.p] || {})[k] || 0, color: col })) }));
-    const leg = '<div class="legend">' + NIV.map(([k, col]) => `<span><i class="box" style="background:${col}"></i>${esc(k)}</span>`).join('') + '</div>';
-    // Los artículos se suman entre años (cada uno cuenta en un solo año): «Hasta» acumula, «Solo» muestra el último año.
-    const cuKs = Object.keys(D.det.pub_cuartil[c] || {}).filter(dentroP).sort();
-    const cuSel = cuTodos ? cuKs : cuKs.slice(-1), cuUlt = cuKs[cuKs.length - 1];
-    const sumaAnios = id => serie(id, c).filter(p => cuSel.includes(p.p)).reduce((s, p) => s + (p.v || 0), 0);
-    const cuQ = q => cuSel.reduce((s, k) => s + (D.det.pub_cuartil[c][k][q] || 0), 0);
-    const cuRows = cuSel.length ? ['Q1', 'Q2', 'Q3', 'Q4'].map((k, i) => ({ a: k + (i === 0 ? ' - mayor impacto' : i === 3 ? ' - menor impacto' : ''), v: cuQ(k), color: ['#1c3247', '#335f7f', '#3c7aa0', '#4597bf'][i] })) : [];
-    const cuTot = cuRows.reduce((s, r) => s + r.v, 0), artTot = sumaAnios('pub_total'), proyTot = sumaAnios('pub_proy');
-    const enCurso = cuUlt == D.anioActual ? (cuSel.length > 1 ? ` (${cuUlt} en curso)` : ' (en curso)') : '';
-    const cuRango = cuSel.length > 1 ? `${cuSel[0]} – ${cuUlt}` : cuUlt;
-    const cuSeg = `<div class="segbtns"><button type="button" class="segbtn ${cuTodos ? 'on' : ''}" data-cu="1">Hasta ${cuUlt}</button><button type="button" class="segbtn ${!cuTodos ? 'on' : ''}" data-cu="0">Solo ${cuUlt}</button></div>`;
-    return `<div class="kpis">${ids.map(id => kpi(id)).join('')}</div>` + lectura(insInvest()) +
+
+  function invResumen() {
+    const c = st.car, ids = ['prod_total', 'prod_aut', 'doc_prod', 'prod_id', 'prod_proy'], pr = INF.prod[c];
+    const todos = TIPOS.map(t => t[0]);
+    const ys = pr ? Object.keys(pr.anios).filter(y => +y <= st.anio).sort() : [];
+    const fila = (nom, f, tot) => `<tr><td>${esc(nom)}</td>${ys.map(y => `<td class="n">${num(f(pr.anios[y]))}</td>`).join('')}<td class="n"><b>${tot == null ? num(ys.reduce((s, y) => s + f(pr.anios[y]), 0)) : tot}</b></td></tr>`;
+    const resumen = ys.length ? `<div class="tbl-wrap"><table class="res"><thead><tr><th>Tipo de producto</th>${ys.map(y => `<th class="n">${y}${+y === D.anioActual ? '*' : ''}</th>`).join('')}<th class="n">Total</th></tr></thead><tbody>` +
+      TIPOS.map(([t, nom]) => fila(nom, x => x.t[t])).join('') +
+      `<tr class="hl"><td><b>Total de productos</b></td>${ys.map(y => `<td class="n"><b>${num(pr.anios[y].total)}</b></td>`).join('')}<td class="n"><b>${num(ys.reduce((s, y) => s + pr.anios[y].total, 0))}</b></td></tr>` +
+      fila('Profesores autores', x => x.aut, ys.length === Object.keys(pr.anios).length ? num(pr.autRango) : '—') +
+      fila('Productos con DOI o ISBN', x => x.id) + fila('Productos que provienen de un proyecto', x => x.proy) + fila('Productos vinculados a un grupo de investigación', x => x.grupo) +
+      '</tbody></table></div><p class="ph-note" style="margin:8px 0 0">* Año en curso: los valores son parciales. Cada producto cuenta solo en su año de publicación; los profesores autores del total se cuentan una vez.</p>'
+      : '<div class="empty"><b>Sin producción registrada</b></div>';
+    return `<div class="kpis k5">${ids.map(id => kpi(id)).join('')}</div>` + lectura(insInvest()) +
       `<div class="grid2 wl">` +
-      panel('Artículos publicados por año y nivel de la revista', 'pub_total', slot(el => columnChart(el, { xs, legend: leg })), 'Artículos únicos, aprobados por la universidad') +
-      panel('Docentes que publican', 'doc_prod', slot(el => lineChart(el, 'doc_prod', { h: 235 })), 'Porcentaje de la planta docente del año con al menos un artículo') +
-      `</div><div class="grid3">` +
-      panel('Revistas de impacto mundial', 'pub_alto', slot(el => lineChart(el, 'pub_alto', { h: 200 })), 'Porcentaje de artículos en Scopus o Web of Science') +
-      panel('Coautoría con estudiantes', 'pub_est', slot(el => lineChart(el, 'pub_est', { h: 200 })), 'Porcentaje de artículos con al menos un estudiante coautor') +
-      (cuSel.length ? `<div class="panel"><div class="ph"><h3>Cuartil de las revistas indexadas</h3>${info('pub_q12')}<span style="flex:1"></span>${cuSeg}</div>` +
-        `<p class="ph-note">Solo los artículos con cuartil asignado - ${cuSel.length > 1 ? 'años' : 'año'} ${esc(cuRango)}${enCurso}</p>` +
-        hbars(cuRows, { fmt: v => num(v) + ' art.', tip: r => `${r.a}: ${num(r.v)} artículos en ${cuRango}` }) +
-        `<p class="ph-note" style="margin:12px 0 0">${B(num(artTot))} artículos publicados${cuSel.length > 1 ? ` entre ${cuSel[0]} y ${cuUlt}` : ` en ${cuUlt}`}; ${B(num(cuTot))} en revistas con cuartil.` +
-        `${proyTot ? ` ${num(proyTot)} provienen de proyectos de investigación.` : ''}</p></div>`
-        : panel('Cuartil de las revistas indexadas', 'pub_q12', '', 'Solo los artículos con cuartil asignado')) +
-      `</div>` + tabla(ids.concat('pub_proy'));
+      panel('Producción científica por año y tipo', 'prod_total', slot(el => columnChart(el, { xs: columnasTipos(c, todos), legend: legTipos(todos) })), 'Productos únicos aprobados y publicados, por año de publicación') +
+      panel('Docentes con artículos publicados', 'doc_prod', slot(el => lineChart(el, 'doc_prod', { h: 235 })), 'Porcentaje de la planta docente del año con al menos un artículo') +
+      `</div>` + panel('Resumen de producción científica por tipo de producto y año', 'prod_total', resumen, 'Mismo resumen del informe FR0128 del SGA') + tabla(ids);
+  }
+
+  function invArticulos() {
+    const c = st.car, ids = ['pub_total', 'pub_alto', 'pub_q12', 'pub_est', 'pub_proy'], pr = INF.prod[c];
+    const ks = pr ? Object.keys(pr.anios).filter(y => enRango(+y)).sort() : [];
+    const cuQ = q => ks.reduce((s, y) => s + (pr.anios[y].art.cuartil[q] || 0), 0);
+    const cuRows = ['Q1', 'Q2', 'Q3', 'Q4'].map((q, i) => ({ a: q + (i === 0 ? ' - mayor impacto' : i === 3 ? ' - menor impacto' : ''), v: cuQ(q), color: ['#1c3247', '#335f7f', '#3c7aa0', '#4597bf'][i] }));
+    const wos = cuQ('WOS') + cuQ('WOS-ESCI'), artTot = sumaTipos(c, ['AM', 'AR']), mundial = sumaTipos(c, ['AM']);
+    const rango = ks.length > 1 ? `${ks[0]} – ${ks[ks.length - 1]}` : (ks[0] || st.anio);
+    return `<div class="kpis k5">${ids.map(id => kpi(id)).join('')}</div>` +
+      `<div class="grid2 wl">` +
+      panel('Artículos publicados por año e impacto de la base', 'pub_total', slot(el => columnChart(el, { xs: columnasTipos(c, ['AM', 'AR']), legend: legTipos(['AM', 'AR']) })),
+        'Impacto mundial: bases como Scopus o Web of Science; regional: las demás bases (informe FR0128)') +
+      panel('Artículos en bases de impacto mundial', 'pub_alto', slot(el => lineChart(el, 'pub_alto', { h: 235 })), 'Porcentaje de los artículos del año') +
+      `</div><div class="grid2">` +
+      panel('Coautoría con estudiantes', 'pub_est', slot(el => lineChart(el, 'pub_est', { h: 210 })), 'Porcentaje de artículos con al menos un estudiante coautor') +
+      `<div class="panel"><div class="ph"><h3>Cuartil de las revistas</h3>${info('pub_q12')}<span style="flex:1"></span>${segTodos()}</div>` +
+      `<p class="ph-note">Artículos con cuartil asignado - ${esc(String(rango))}</p>` +
+      hbars(cuRows, { fmt: v => num(v) + ' art.', tip: r => `${r.a}: ${num(r.v)} artículos en ${rango}` }) +
+      `<p class="ph-note" style="margin:12px 0 0">${B(num(artTot))} artículos ${prodTodos ? 'hasta' : 'en'} ${st.anio}: ${num(mundial)} de impacto mundial y ${num(artTot - mundial)} de impacto regional; ` +
+      `${num(cuRows.reduce((s, r) => s + r.v, 0))} en revistas con cuartil${wos ? ` y ${num(wos)} en Web of Science sin cuartil (ESCI)` : ''}.</p></div>` +
+      `</div>` + tablaProductos(c, ['AM', 'AR'], 'Artículos científicos', 'Revista (bases de indexación)') + tabla(ids);
+  }
+
+  function invTipo(sub) {
+    const c = st.car, idsT = ISUB_ID[sub], id = idsT[0], tipos = ISUB_TIPOS[sub], [uno, varios] = ISUB_UNO[sub];
+    const n = sumaTipos(c, tipos);
+    const items = INF.prodItems.filter(f => tipos.includes(f[0]) && enRango(f[1]) && deCarrera(f[13], c));
+    const conId = items.filter(f => f[5]).length, deProy = items.filter(f => f[7]).length;
+    const ins = n ? [`${prodTodos ? 'Hasta' : 'En'} ${st.anio} los docentes ${deLa(c)} publicaron ${B(num(n) + ' ' + (n === 1 ? uno : varios))}` +
+      `${conId ? `; ${num(conId)} con ${sub === 'lib' ? 'ISBN' : 'DOI'}` : ''}${deProy ? ` y ${num(deProy)} provienen de un proyecto de investigación` : ''}.`] : [];
+    const medio = { lib: 'Libro (en los capítulos)', pon: 'Evento (país)', proc: 'Evento o revista' }[sub];
+    const titulo = varios[0].toUpperCase() + varios.slice(1);
+    return `<div class="kpis k4">${idsT.map(x => kpi(x)).join('')}</div>` + lectura(ins) +
+      `<div class="grid2">` +
+      panel(`${titulo} por año`, id, slot(el => columnChart(el, { xs: columnasTipos(c, tipos), legend: legTipos(tipos), h: 215 })), 'Por año de publicación - * año en curso') +
+      panel('Por línea de investigación', id, porLinea(c, tipos), `${prodTodos ? 'Hasta' : 'En'} ${st.anio} - las ocho líneas con más ${varios}`) +
+      `</div>` + tablaProductos(c, tipos, titulo, medio) + tabla(idsT);
+  }
+
+  /* Proyectos: [origen I/E, título, línea, grupo, financiamiento, inicio, fin, {año: 1 si finalizó ese año}, carreras] */
+  function invProyectos() {
+    const c = st.car, ids = ['inv_proy', 'inv_ini', 'inv_prof'], pr = INF.proy[c];
+    const ys = pr ? Object.keys(pr.anios).filter(y => +y <= st.anio).sort() : [];
+    const [r0, r1] = INF.proyRango;
+    const resumen = ys.length ? `<div class="tbl-wrap"><table class="res"><thead><tr><th>Año</th><th class="n">Iniciados</th><th class="n">En ejecución</th><th class="n">Finalizados</th><th class="n">Total del año</th><th class="n">Profesores participantes</th></tr></thead><tbody>` +
+      ys.map(y => { const a = pr.anios[y]; return `<tr class="${+y === st.anio ? 'hl' : ''}"><td>${y}${+y === D.anioActual ? '*' : ''}</td><td class="n">${num(a.ini)}</td><td class="n">${num(a.ej)}</td><td class="n">${num(a.fin)}</td><td class="n"><b>${num(a.total)}</b></td><td class="n">${num(a.prof)}</td></tr>`; }).join('') +
+      (ys.length === Object.keys(pr.anios).length ? `<tr><td><b>Total del rango (proyectos distintos)</b></td><td class="n">${num(pr.rango.ini)}</td><td class="n">${num(pr.rango.ej)}</td><td class="n">${num(pr.rango.fin)}</td><td class="n"><b>${num(pr.rango.total)}</b></td><td class="n">${num(pr.rango.prof)}</td></tr>` : '') +
+      '</tbody></table></div><p class="ph-note" style="margin:8px 0 0">Un proyecto cuenta en cada año en que estuvo en ejecución: la suma de los años es mayor que el total del rango. * Año en curso.</p>'
+      : '<div class="empty"><b>Sin proyectos de investigación en el rango</b></div>';
+    const xs = ys.map(y => ({ p: y, l: y, a: +y, parcial: +y === D.anioActual,
+      segs: [{ k: 'En ejecución', v: pr.anios[y].ej, color: '#4597bf' }, { k: 'Finalizados en el año', v: pr.anios[y].fin, color: '#1c3247' }] }));
+    const leg = '<div class="legend"><span><i class="box" style="background:#4597bf"></i>En ejecución</span><span><i class="box" style="background:#1c3247"></i>Finalizados en el año</span></div>';
+    const conCar = esAgregado(c);
+    const filas = INF.proyItems.filter(f => deCarrera(f[8], c) && Object.keys(f[7]).some(y => enRango(+y)))
+      .sort((a, b) => b[5].localeCompare(a[5]));
+    const estadoEn = f => { const y = Object.keys(f[7]).filter(z => +z <= st.anio).sort().pop(); return y && f[7][y] ? 'Finalizado' : 'En ejecución'; };
+    const lista = filas.length ? `<div class="tbl-wrap" style="max-height:440px;overflow-y:auto"><table class="res"><thead><tr><th>Proyecto</th>${conCar ? '<th>Carrera</th>' : ''}<th>Línea de investigación</th><th>Grupo</th><th>Financiamiento</th><th>Periodo de ejecución</th><th>Estado en ${st.anio}</th></tr></thead><tbody>` +
+      filas.map(f => { const e = estadoEn(f), activo = String(st.anio) in f[7];
+        return `<tr class="${activo ? 'hl' : ''}"><td style="min-width:260px">${esc(f[1])}${f[0] === 'E' ? ' <span class="per">(externo)</span>' : ''}</td>${conCar ? `<td class="per">${esc(carNom(f[8]))}</td>` : ''}` +
+          `<td class="per">${esc(f[2])}</td><td class="per">${esc(f[3])}</td><td class="per">${esc(f[4])}</td><td class="per">${esc(f[5].split('-').reverse().join('/'))} – ${esc(f[6].split('-').reverse().join('/'))}</td>` +
+          `<td>${activo ? `<span class="pill ${e === 'Finalizado' ? 'fin' : 'ej'}">${e}</span>` : '<span class="per">No se ejecutó ese año</span>'}</td></tr>`; }).join('') + '</tbody></table></div>'
+      : `<div class="empty"><b>Sin proyectos ${prodTodos ? 'hasta' : 'en'} ${st.anio}</b></div>`;
+    const ref = medir('inv_proy', c).cur;
+    const ins = ref ? [`En ${esc(ref.l.replace(' (parcial)', ''))} ${c === FAC ? 'la facultad' : esAgregado(c) ? 'la modalidad' : 'la carrera'} participó en ${B(num(ref.v) + ' proyectos de investigación')} (${num(ref.ej)} en ejecución y ${num(ref.fin)} finalizados en el año)` +
+      (pr ? `; entre ${r0} y ${r1} suma ${num(pr.rango.total)} proyectos distintos con ${num(pr.rango.prof)} docentes participantes.` : '.')] : [];
+    return `<div class="kpis k4">${ids.map(id => kpi(id)).join('')}</div>` + lectura(ins) +
+      `<div class="grid2 wl">` +
+      panel('Proyectos de investigación por año', 'inv_proy', slot(el => columnChart(el, { xs, legend: leg, h: 225 })), `Proyectos en ejecución en algún momento del año, ${r0} – ${r1}`) +
+      panel('Profesores en proyectos', 'inv_prof', slot(el => lineChart(el, 'inv_prof', { h: 225 })), 'Docentes de la carrera que integran algún proyecto del año') +
+      `</div>` + panel('Resumen anual de proyectos de investigación', 'inv_proy', resumen, `Mismo resumen del informe FR0127 del SGA (${r0} – ${r1}: el año actual y los cuatro anteriores)`) +
+      `<div class="panel"><div class="ph"><h3>Proyectos de investigación con participación de docentes de la carrera</h3><span style="flex:1"></span>${segTodos()}</div>` +
+      `<p class="ph-note">${num(filas.length)} proyectos. Se resaltan los que estuvieron en ejecución en ${st.anio}. Internos y externos aprobados, en ejecución o finalizados.</p>${lista}</div>` + tabla(ids);
+  }
+
+  function vInvest() {
+    if (!INF) return '<div class="empty"><b>Faltan los datos de investigación</b>No se cargó data/informes-data.js.</div>';
+    const tabs = ISUBS.map(([k, l]) => `<button type="button" role="tab" class="tab ${st.isub === k ? 'on' : ''}" aria-selected="${st.isub === k}" data-isub="${k}">${l}</button>`).join('');
+    const cuerpo = st.isub === 'art' ? invArticulos() : st.isub === 'proy' ? invProyectos() : ISUB_ID[st.isub] ? invTipo(st.isub) : invResumen();
+    return `<div class="tabs" role="tablist">${tabs}</div>` + cuerpo +
+      `<p class="priv"><b>Criterio de los informes del SGA:</b> la producción cuenta los productos aprobados y publicados de los docentes que constan en el distributivo de la carrera el año de la publicación (informe FR0128); ` +
+      `los proyectos, los de investigación aprobados con algún integrante en el distributivo de la carrera (informe FR0127). Un producto o proyecto compartido por varias carreras se cuenta una vez en la modalidad y en la facultad. Los listados no muestran nombres de autores ni de integrantes.</p>`;
   }
 
   /* ---------------- Vista 5 - Vinculación ---------------- */
@@ -1890,6 +2102,7 @@
     } else if (scroll) window.scrollTo(0, 0);
     const h = '#' + st.vista + (st.foco ? '/' + st.foco : '') + `?c=${st.car}&a=${st.anio}` + (st.sem ? '&s=' + st.sem : '') +
       (st.vista === 'estudiantes' ? `&t=${st.sub}` + (st.sub === 'grad' ? `&v=${st.gv}&m=${st.gmom}` : '') : '') +
+      (st.vista === 'investigacion' ? `&i=${st.isub}` : '') +
       (st.gse ? '&g=' + encodeURIComponent(st.gse) : '') + (st.niv ? '&n=' + st.niv : '') +
       (st.rf ? '&f=' + encodeURIComponent(st.rf) : '') + (st.gf ? '&gf=' + encodeURIComponent(st.gf) : '') +
       (st.tf ? '&tf=' + encodeURIComponent(st.tf) : '') +
@@ -1910,6 +2123,8 @@
     if (st.sem) st.anio = +st.sem.slice(-4);
     if (['tray', 'perfil', 'rend', 'grad'].includes(qs.get('t'))) st.sub = qs.get('t');
     if (st.foco && CAT[st.foco].sub) { st.sub = CAT[st.foco].sub; if (CAT[st.foco].gv) st.gv = CAT[st.foco].gv; }
+    if (ISUBS.some(([k]) => k === qs.get('i'))) st.isub = qs.get('i');
+    if (st.foco && CAT[st.foco].isub) st.isub = CAT[st.foco].isub;
     if (GV[qs.get('v')]) st.gv = qs.get('v');
     if (MOMENTOS[qs.get('m')]) st.gmom = qs.get('m');
     st.gse = GSE_NOM[qs.get('g')] ? qs.get('g') : null;
@@ -2008,9 +2223,14 @@
     if (go) {
       e.preventDefault(); st.vista = go.dataset.go; st.foco = go.dataset.foco || null;
       if (go.dataset.sub) st.sub = go.dataset.sub;
+      if (go.dataset.isub) st.isub = go.dataset.isub;
       if (go.dataset.gv) st.gv = go.dataset.gv;
       render(true); return;
     }
+    const isb = e.target.closest('[data-isub]');
+    if (isb) { st.isub = isb.dataset.isub; st.foco = null; render(false); return; }
+    const ptb = e.target.closest('[data-pt]');
+    if (ptb) { prodTodos = ptb.dataset.pt === '1'; render(false); return; }
     const sb = e.target.closest('[data-sub]');
     if (sb) { st.sub = sb.dataset.sub; st.foco = null; render(false); return; }
     const gvb = e.target.closest('[data-gv]');

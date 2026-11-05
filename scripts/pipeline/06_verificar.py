@@ -18,7 +18,8 @@ from comun import (CARRERAS, CARRERAS_NO_VIGENTES, CLAVES, EXCLUIR_PRESENCIAL, F
                    SALIDA, estado)
 
 ARCHIVOS = {"FACS_DATA": "face-data.js", "FACS_DOC": "docentes-data.js", "FACS_GRAD": "graduados-data.js",
-            "FACS_TRAY": "trayectoria-data.js", "FACS_PERFIL": "perfil-data.js", "FACS_REND": "rendimiento-data.js"}
+            "FACS_TRAY": "trayectoria-data.js", "FACS_PERFIL": "perfil-data.js", "FACS_REND": "rendimiento-data.js",
+            "FACS_INF": "informes-data.js"}
 errores, avisos = [], []
 D, TXT = {}, {}
 for var, f in ARCHIVOS.items():
@@ -62,6 +63,24 @@ for k, an in D.get("FACS_TRAY", {}).get("anual", {}).items():
         if fila[0] < MIN_BASE:
             errores.append(f"trayectoria {k} {a}: {fila[0]} estudiantes (< {MIN_BASE})")
 
+# 3b. informes del SGA (05c): estudiantes con umbral y sin celdas deducibles por resta
+INF = D.get("FACS_INF", {})
+for bloque in ("perm", "des", "tit"):
+    pub = INF.get(bloque, {})
+    for k, per in pub.items():
+        for p, fila in per.items():
+            if fila[0] < MIN_BASE:
+                errores.append(f"informes {bloque} {k} {p}: {fila[0]} estudiantes (< {MIN_BASE})")
+    for k in {x.split("|")[0] for x in pub}:
+        for grupo in [[f"{k}|sexo:HOMBRE", f"{k}|sexo:MUJER"], [f"{k}|{g}" for g in ["BAJO", "MEDIO BAJO", "MEDIO TÍPICO", "MEDIO ALTO", "ALTO"]]]:
+            for p in pub.get(k, {}):
+                vis = [h for h in grupo if p in pub.get(h, {})]
+                if len(vis) == len(grupo) - 1 and len(grupo) == 2:
+                    errores.append(f"informes {bloque} {k} {p}: un solo sexo publicado, el otro se deduce restando")
+for f, t in TXT.items():
+    if f == "informes-data.js" and re.search(r'"persona_id"|"docente_id"|"inscripcion_id"', t):
+        errores.append("informes-data.js contiene identificadores")
+
 # 4. coherencia de la matrícula entre archivos
 if "FACS_DATA" in D and "FACS_REND" in D:
     for k in CLAVES:
@@ -90,7 +109,8 @@ for k in CLAVES:
     mat = ultimo(D["FACS_DATA"]["matricula"].get(k, [])) if "FACS_DATA" in D else None
     dn = ultimo(D["FACS_DOC"]["ind"]["doc_n"].get(k, [])) if "FACS_DOC" in D else None
     enc = sum(v["T"][0] for v in D["FACS_GRAD"]["kpi"].get(k, {}).values() if "T" in v) if "FACS_GRAD" in D else None
-    pub = next((p["v"] for p in D["FACS_DATA"]["ind"]["pub_total"].get(k, []) if p["a"] == 2025), None)
+    pub = (INF["prod"][k]["anios"].get("2025", {}).get("art", {}).get("n") if k in INF.get("prod", {})   # informe FR0128 (05c)
+           else next((p["v"] for p in D["FACS_DATA"]["ind"]["pub_total"].get(k, []) if p["a"] == 2025), None))
     vin = next((p["v"] for p in D["FACS_DATA"]["ind"]["vin_proy"].get(k, []) if p["a"] == 2025), None)
     print(f"{nombres[k][:41]:<42}{mat if mat is not None else '—':>14}{dn if dn is not None else '—':>12}"
           f"{enc if enc is not None else '—':>16}{pub if pub is not None else '—':>13}{vin if vin is not None else '—':>15}")
