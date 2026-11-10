@@ -1829,7 +1829,7 @@
   const SUB_DE = tipos => Object.keys(ISUB_TIPOS).find(s => ISUB_TIPOS[s].join() === tipos.join());
   /* Docentes distintos de la carrera con algún producto del apartado, en el rango del listado («Hasta» o «Solo» el año) */
   const autoresSub = (c, sub) => { const a = INF.prod[c] && INF.prod[c].autSub && INF.prod[c].autSub[sub]; const y = a && a[st.anio]; return y ? y[prodTodos ? 0 : 1] : null; };
-  const docDe = c => c === FAC ? 'Docentes de la facultad' : esAgregado(c) ? 'Docentes de la modalidad' : 'Docentes de la carrera';
+  const docDe = () => 'N.º de docentes';   // mismo nombre en carrera, modalidad y facultad (el filtro ya dice cuál es)
   const doiHTML = d => /^10\.\S+$/.test(d) ? `<a href="https://doi.org/${encodeURI(d)}" target="_blank" rel="noopener">${esc(d)}</a>` : esc(d);
 
   /* Listado de productos: [tipo, año, título, medio, bases, DOI/ISBN, línea, proyecto, grupo, nivel, cuartil, coautoría estudiantil, acceso abierto, carreras,
@@ -1850,7 +1850,7 @@
       : `<div class="empty"><b>Sin ${esc(titulo.toLowerCase())} ${prodTodos ? 'hasta' : 'en'} ${st.anio}</b></div>`;
     return `<div class="panel"><div class="ph"><h3>${esc(titulo)}</h3><span style="flex:1"></span>${segTodos()}</div>` +
       `<p class="ph-note">${num(filas.length)} ${filas.length === 1 ? 'producto' : 'productos'} ${prodTodos ? 'hasta' : 'en'} ${st.anio}${aut != null && filas.length ? `, de ${num(aut)} ${aut === 1 ? 'docente distinto' : 'docentes distintos'} ${deLa(c)},` : ''} del más reciente al más antiguo. ` +
-      `Un producto de varios docentes aparece una vez; la columna «${docDe(c)}» dice cuántos lo firman (un docente con varios productos suma en cada uno).</p>${cuerpo}</div>`;
+      `Un producto de varios docentes aparece una vez; «${docDe(c)}» dice cuántos docentes ${deLa(c)} lo firman (un docente con varios productos suma en cada uno).</p>${cuerpo}</div>`;
   }
   /* Productos por línea de investigación (en el rango del listado) */
   function porLinea(c, tipos) {
