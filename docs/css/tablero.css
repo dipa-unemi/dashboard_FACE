@@ -17,7 +17,7 @@
   --font: Calibri, Carlito, "Segoe UI", system-ui, sans-serif;
   --shadow-sm: 0 1px 3px rgba(28,50,71,.07), 0 1px 2px rgba(28,50,71,.04);
   --shadow: 0 6px 18px rgba(28,50,71,.10), 0 2px 5px rgba(28,50,71,.06);
-  --side:248px; --hdr:78px;
+  --side:248px; --hdr:127px;
 }
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 html { scroll-behavior:smooth; }
@@ -29,14 +29,15 @@ button, select { font-family:var(--font); }
 /* ---------- marco institucional ---------- */
 .appbar { position:sticky; top:0; z-index:40; height:var(--hdr); background:var(--paper);
   border-bottom:3px solid var(--az-1); box-shadow:0 2px 10px rgba(28,50,71,.06);
-  display:flex; align-items:center; gap:22px; padding:0 24px; }
-.appbar-logo { height:50px; width:auto; flex:0 0 auto; }
-.appbar-titulo { border-left:1px solid var(--edge2); padding-left:22px; min-width:0; flex:0 1 auto; }
+  display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:62px 62px; align-items:center; }
+/* Fila 1: logo y título con aire entre ambos; fila 2: los filtros en su propia franja */
+.appbar-logo { height:38px; width:auto; margin:0 28px 0 24px; }
+.appbar-titulo { border-left:1px solid var(--edge2); padding:2px 0 2px 28px; min-width:0; }
 .appbar-titulo h1 { font-size:19px; font-weight:700; letter-spacing:-.01em; line-height:1.15; color:var(--az-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appbar-titulo p { font-size:12px; color:var(--ink3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sitefooter { background:var(--az-1); padding:16px 28px; display:flex; justify-content:space-between; align-items:center; gap:16px 24px; flex-wrap:wrap; }
+.sitefooter { background:var(--az-1); padding:12px 28px; display:flex; justify-content:space-between; align-items:center; gap:16px 24px; flex-wrap:wrap; }
 .sitefooter .fuente { margin:0; color:#fff; font-size:13px; line-height:1.4; opacity:.9; }
-.sitefooter img { height:40px; width:auto; }
+.sitefooter img { height:26px; width:auto; }
 
 /* ---------- estructura ---------- */
 .shell { display:grid; grid-template-columns:var(--side) 1fr; min-height:calc(100vh - var(--hdr)); }
@@ -55,12 +56,12 @@ button, select { font-family:var(--font); }
 .nav-sep { height:1px; background:rgba(255,255,255,.1); margin:8px 6px; }
 
 .main { min-width:0; padding-bottom:44px; }
-.filters { display:flex; gap:10px; align-items:flex-end; flex-wrap:nowrap; margin-left:auto; flex:0 0 auto; }
-/* Los cuatro filtros van en una sola línea: los nombres de carrera largos se recortan en el
-   selector (la lista desplegada los muestra completos) y el periodo no baja a otra fila. */
-#fCarrera { width:220px; min-width:0; text-overflow:ellipsis; }
+.filters { grid-column:1 / -1; align-self:stretch; display:flex; gap:10px 14px; align-items:center; flex-wrap:wrap;
+  padding:6px 24px; background:var(--paper2); border-top:1px solid var(--edge2); }
+/* Los nombres de carrera largos se recortan en el selector (la lista desplegada los muestra completos). */
+#fCarrera { width:300px; min-width:0; text-overflow:ellipsis; }
 #fNivel, #fAnio { min-width:96px; }
-.fld { display:flex; flex-direction:column; gap:3px; }
+.fld { display:flex; flex-direction:column; gap:2px; }
 .fld label { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
 .fld select, .rfbar select { font-size:13px; color:var(--ink); background:var(--paper); border:1px solid var(--edge2);
   border-radius:var(--r); padding:6px 28px 6px 10px; cursor:pointer; min-width:112px; appearance:none;
@@ -295,10 +296,10 @@ svg.chart text { font-family:var(--font); }
 .segbtn.on { background:var(--az-2); color:#fff; border-color:var(--az-2); }
 
 @media (max-width:1365px){
-  .appbar { height:auto; position:static; flex-wrap:wrap; padding:12px 20px; gap:12px 20px; }
-  .filters { flex-wrap:wrap; }
+  .appbar { height:auto; position:static; grid-template-rows:auto auto; }
+  .appbar-logo { margin:12px 22px 12px 20px; }
+  .filters { padding:8px 20px; }
   .appbar-titulo h1, .appbar-titulo p { white-space:normal; }
-  .filters { margin-left:0; }
   .side { top:0; height:100vh; }
 }
 @media (max-width:900px){
@@ -308,7 +309,11 @@ svg.chart text { font-family:var(--font); }
   .nav li { flex:0 0 auto; }
   .nav button { white-space:nowrap; padding:7px 10px; }
   .nav-sep { display:none; }
-  .appbar-titulo { border-left:0; padding-left:0; }
+  .appbar { grid-template-columns:minmax(0,1fr); }
+  .appbar-logo { height:32px; margin:12px 16px 4px; justify-self:start; max-width:calc(100% - 32px); object-fit:contain; }
+  .appbar-titulo { border-left:0; padding:0 16px 10px; }
+  .filters { padding:8px 16px; }
+  #fCarrera { width:100%; max-width:300px; }
   .body { padding-left:16px; padding-right:16px; }
 }
 @media (prefers-reduced-motion:reduce){ * { transition:none !important; animation:none !important; } }

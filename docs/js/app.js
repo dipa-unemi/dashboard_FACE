@@ -1826,24 +1826,31 @@
   const segTodos = () => `<div class="segbtns"><button type="button" class="segbtn ${prodTodos ? 'on' : ''}" data-pt="1">Hasta ${st.anio}</button><button type="button" class="segbtn ${!prodTodos ? 'on' : ''}" data-pt="0">Solo ${st.anio}</button></div>`;
   const enRango = a => a <= st.anio && (prodTodos || a === st.anio);
   const sumaTipos = (c, tipos) => { const pr = INF.prod[c]; return pr ? Object.keys(pr.anios).filter(y => enRango(+y)).reduce((s, y) => s + tipos.reduce((t, q) => t + pr.anios[y].t[q], 0), 0) : 0; };
+  const SUB_DE = tipos => Object.keys(ISUB_TIPOS).find(s => ISUB_TIPOS[s].join() === tipos.join());
+  /* Docentes distintos de la carrera con algún producto del apartado, en el rango del listado («Hasta» o «Solo» el año) */
+  const autoresSub = (c, sub) => { const a = INF.prod[c] && INF.prod[c].autSub && INF.prod[c].autSub[sub]; const y = a && a[st.anio]; return y ? y[prodTodos ? 0 : 1] : null; };
+  const docDe = c => c === FAC ? 'Docentes de la facultad' : esAgregado(c) ? 'Docentes de la modalidad' : 'Docentes de la carrera';
   const doiHTML = d => /^10\.\S+$/.test(d) ? `<a href="https://doi.org/${encodeURI(d)}" target="_blank" rel="noopener">${esc(d)}</a>` : esc(d);
 
-  /* Listado de productos: [tipo, año, título, medio, bases, DOI/ISBN, línea, proyecto, grupo, nivel, cuartil, coautoría estudiantil, acceso abierto, carreras] */
+  /* Listado de productos: [tipo, año, título, medio, bases, DOI/ISBN, línea, proyecto, grupo, nivel, cuartil, coautoría estudiantil, acceso abierto, carreras,
+     {clave: docentes autores de esa carrera, modalidad o facultad}] */
   function tablaProductos(c, tipos, titulo, medio) {
     const filas = INF.prodItems.filter(f => tipos.includes(f[0]) && enRango(f[1]) && deCarrera(f[13], c))
       .sort((a, b) => b[1] - a[1] || a[2].localeCompare(b[2]));
+    const aut = autoresSub(c, SUB_DE(tipos));
     const art = tipos.includes('AM'), conCar = esAgregado(c), mixto = !art && tipos.length > 1, conMedio = !(tipos.length === 1 && tipos[0] === 'LI');
     const cuerpo = filas.length ? `<div class="tbl-wrap" style="max-height:460px;overflow-y:auto"><table class="res"><thead><tr><th class="n">Año</th><th>Título</th>` +
-      (art ? '<th>Impacto</th>' : mixto ? '<th>Tipo</th>' : '') + (conMedio ? `<th>${esc(medio)}</th>` : '') + (art ? '<th>Cuartil</th>' : '') + `<th>DOI / ISBN</th><th>Línea de investigación</th><th>De un proyecto</th>${conCar ? '<th>Carrera</th>' : ''}</tr></thead><tbody>` +
+      (art ? '<th>Impacto</th>' : mixto ? '<th>Tipo</th>' : '') + (conMedio ? `<th>${esc(medio)}</th>` : '') + (art ? '<th>Cuartil</th>' : '') + `<th class="n">${docDe(c)}</th><th>DOI / ISBN</th><th>Línea de investigación</th><th>De un proyecto</th>${conCar ? '<th>Carrera</th>' : ''}</tr></thead><tbody>` +
       filas.map(f => `<tr><td class="n">${f[1]}</td><td style="min-width:260px">${esc(f[2])}</td>` +
         (art ? `<td class="per">${f[0] === 'AM' ? 'Mundial' : 'Regional'}</td>` : mixto ? `<td class="per">${f[0] === 'LI' ? 'Libro' : 'Capítulo'}</td>` : '') +
         (conMedio ? `<td class="per" style="min-width:160px">${f[3] ? esc(f[3]) : '—'}${f[4] ? `<br><small>${esc(f[4])}</small>` : ''}</td>` : '') +
         (art ? `<td class="per">${esc(/^Q\d$/.test(f[10]) || /^WOS/.test(f[10]) ? f[10] : '—')}</td>` : '') +
-        `<td class="per">${f[5] ? doiHTML(f[5]) : '—'}</td><td class="per">${esc(f[6])}</td><td>${f[7] ? '<span class="pill fin">Sí</span>' : '<span class="per">No</span>'}</td>` +
+        `<td class="n">${f[14] && f[14][c] ? num(f[14][c]) : '—'}</td><td class="per">${f[5] ? doiHTML(f[5]) : '—'}</td><td class="per">${esc(f[6])}</td><td>${f[7] ? '<span class="pill fin">Sí</span>' : '<span class="per">No</span>'}</td>` +
         `${conCar ? `<td class="per">${esc(carNom(f[13]))}</td>` : ''}</tr>`).join('') + '</tbody></table></div>'
       : `<div class="empty"><b>Sin ${esc(titulo.toLowerCase())} ${prodTodos ? 'hasta' : 'en'} ${st.anio}</b></div>`;
     return `<div class="panel"><div class="ph"><h3>${esc(titulo)}</h3><span style="flex:1"></span>${segTodos()}</div>` +
-      `<p class="ph-note">${num(filas.length)} ${filas.length === 1 ? 'producto' : 'productos'} ${prodTodos ? 'hasta' : 'en'} ${st.anio}, del más reciente al más antiguo. Un producto de varios docentes de la carrera aparece una vez.</p>${cuerpo}</div>`;
+      `<p class="ph-note">${num(filas.length)} ${filas.length === 1 ? 'producto' : 'productos'} ${prodTodos ? 'hasta' : 'en'} ${st.anio}${aut != null && filas.length ? `, de ${num(aut)} ${aut === 1 ? 'docente distinto' : 'docentes distintos'} ${deLa(c)},` : ''} del más reciente al más antiguo. ` +
+      `Un producto de varios docentes aparece una vez; la columna «${docDe(c)}» dice cuántos lo firman (un docente con varios productos suma en cada uno).</p>${cuerpo}</div>`;
   }
   /* Productos por línea de investigación (en el rango del listado) */
   function porLinea(c, tipos) {
@@ -1919,6 +1926,8 @@
     const conId = items.filter(f => f[5]).length, deProy = items.filter(f => f[7]).length;
     const ins = n ? [`${prodTodos ? 'Hasta' : 'En'} ${st.anio} los docentes ${deLa(c)} publicaron ${B(num(n) + ' ' + (n === 1 ? uno : varios))}` +
       `${conId ? `; ${num(conId)} con ${sub === 'lib' ? 'ISBN' : 'DOI'}` : ''}${deProy ? ` y ${num(deProy)} provienen de un proyecto de investigación` : ''}.`] : [];
+    const aut = autoresSub(c, sub);
+    if (n && aut) ins.push(`${sub === 'pon' ? 'Las presentaron' : 'Los firman'} ${B(num(aut) + (aut === 1 ? ' docente' : ' docentes'))} ${deLa(c)}; el indicador cuenta ${varios}, no docentes: una ${sub === 'pon' ? 'ponencia' : 'obra'} de varios docentes cuenta una vez.`);
     const medio = { lib: 'Libro (en los capítulos)', pon: 'Evento (país)', proc: 'Evento o revista' }[sub];
     const titulo = varios[0].toUpperCase() + varios.slice(1);
     return `<div class="kpis k4">${idsT.map(x => kpi(x)).join('')}</div>` + lectura(ins) +
@@ -1928,7 +1937,7 @@
       `</div>` + tablaProductos(c, tipos, titulo, medio) + tabla(idsT);
   }
 
-  /* Proyectos: [origen I/E, título, línea, grupo, financiamiento, inicio, fin, {año: 1 si finalizó ese año}, carreras] */
+  /* Proyectos: [origen I/E, título, línea, grupo, financiamiento, inicio, fin, {año: 1 si finalizó ese año}, carreras, {clave: docentes que lo integran}] */
   function invProyectos() {
     const c = st.car, ids = ['inv_proy', 'inv_ini', 'inv_prof'], pr = INF.proy[c];
     const ys = pr ? Object.keys(pr.anios).filter(y => +y <= st.anio).sort() : [];
@@ -1945,10 +1954,10 @@
     const filas = INF.proyItems.filter(f => deCarrera(f[8], c) && Object.keys(f[7]).some(y => enRango(+y)))
       .sort((a, b) => b[5].localeCompare(a[5]));
     const estadoEn = f => { const y = Object.keys(f[7]).filter(z => +z <= st.anio).sort().pop(); return y && f[7][y] ? 'Finalizado' : 'En ejecución'; };
-    const lista = filas.length ? `<div class="tbl-wrap" style="max-height:440px;overflow-y:auto"><table class="res"><thead><tr><th>Proyecto</th>${conCar ? '<th>Carrera</th>' : ''}<th>Línea de investigación</th><th>Grupo</th><th>Financiamiento</th><th>Periodo de ejecución</th><th>Estado en ${st.anio}</th></tr></thead><tbody>` +
+    const lista = filas.length ? `<div class="tbl-wrap" style="max-height:440px;overflow-y:auto"><table class="res"><thead><tr><th>Proyecto</th>${conCar ? '<th>Carrera</th>' : ''}<th class="n">${docDe(c)}</th><th>Línea de investigación</th><th>Grupo</th><th>Financiamiento</th><th>Periodo de ejecución</th><th>Estado en ${st.anio}</th></tr></thead><tbody>` +
       filas.map(f => { const e = estadoEn(f), activo = String(st.anio) in f[7];
         return `<tr class="${activo ? 'hl' : ''}"><td style="min-width:260px">${esc(f[1])}${f[0] === 'E' ? ' <span class="per">(externo)</span>' : ''}</td>${conCar ? `<td class="per">${esc(carNom(f[8]))}</td>` : ''}` +
-          `<td class="per">${esc(f[2])}</td><td class="per">${esc(f[3])}</td><td class="per">${esc(f[4])}</td><td class="per">${esc(f[5].split('-').reverse().join('/'))} – ${esc(f[6].split('-').reverse().join('/'))}</td>` +
+          `<td class="n">${f[9] && f[9][c] ? num(f[9][c]) : '—'}</td><td class="per">${esc(f[2])}</td><td class="per">${esc(f[3])}</td><td class="per">${esc(f[4])}</td><td class="per">${esc(f[5].split('-').reverse().join('/'))} – ${esc(f[6].split('-').reverse().join('/'))}</td>` +
           `<td>${activo ? `<span class="pill ${e === 'Finalizado' ? 'fin' : 'ej'}">${e}</span>` : '<span class="per">No se ejecutó ese año</span>'}</td></tr>`; }).join('') + '</tbody></table></div>'
       : `<div class="empty"><b>Sin proyectos ${prodTodos ? 'hasta' : 'en'} ${st.anio}</b></div>`;
     const ref = medir('inv_proy', c).cur;

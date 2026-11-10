@@ -204,6 +204,13 @@ r23["uid"] = r23.clase + ":" + r23.producto_id.astype(str)
 txt = lambda s: "" if pd.isna(s) else " ".join(str(s).split())
 productos = r23.drop_duplicates("uid").set_index("uid")
 car_de = r23.groupby("uid").clave.apply(lambda s: "+".join(sorted(set(s), key=CARRERAS_K.index)))
+# Docentes autores de cada producto en cada carrera, modalidad y facultad (distintos: el que está en dos carreras
+# cuenta una vez en la modalidad y en la facultad). Sale de las filas de la consulta (una por docente del
+# distributivo), no de autores_registrados del SGA, que viene vacío en parte de los productos.
+doc_de = defaultdict(dict)
+for k, sub in claves_de(r23):
+    for uid, n in sub.groupby("uid").docente_id.nunique().items():
+        doc_de[uid][k] = int(n)
 items = []
 for uid, p in productos.iterrows():
     # Sin nombres de editores: el libro no lleva editorial (a veces es una persona) y el capítulo, solo el título del libro.
@@ -211,7 +218,7 @@ for uid, p in productos.iterrows():
     items.append([p.tipo, int(p.anio), txt(p.titulo), medio, txt(p.bases_indexadas), txt(p.doi_o_isbn),
                   txt(p.linea), int(p.proviene_proyecto == "SI"), txt(p.grupo_investigacion), txt(p.nivel_nombre),
                   txt(p.cuartil), int(pd.to_numeric(p.autores_estudiantes, errors="coerce") > 0 if p.clase == "articulo" else 0),
-                  int(p.acceso_abierto == "SI"), car_de[uid]])
+                  int(p.acceso_abierto == "SI"), car_de[uid], doc_de[uid]])
 ANIOS_PROD = sorted(int(a) for a in r23.anio.unique())
 
 # Planta docente del año por carrera: denominador de «docentes con producción» (lo calcula el paso 02).
@@ -219,6 +226,7 @@ fd = (SALIDA / "face-data.js").read_text(encoding="utf-8")
 planta = {k: {p["p"]: p.get("n") for p in pts}
           for k, pts in json.loads(fd[fd.index("=") + 1:].strip().rstrip(";"))["ind"]["doc_prod"].items()}
 
+SUB_TIPOS = {"art": ["AM", "AR"], "lib": ["LI", "CA"], "pon": ["PO"], "proc": ["PR"]}   # apartados del tablero
 prod = {}
 for k, sub in claves_de(r23):
     u = sub.drop_duplicates("uid")
@@ -239,7 +247,14 @@ for k, sub in claves_de(r23):
                     "cuartil": {q: int((art.cuartil == q).sum()) for q in ["Q1", "Q2", "Q3", "Q4", "WOS", "WOS-ESCI", "SIN CUARTIL", "PROCEEDING"]},
                     "nivel": {nv: int((art.nivel_nombre == nv).sum()) for nv in art.nivel_nombre.dropna().unique()}},
         }
-    prod[k] = {"anios": porA, "autRango": int(sub.docente_id.nunique()), "totalRango": int(u.uid.nunique())}
+    # Docentes distintos con al menos un producto de cada apartado: [hasta el año, solo en el año].
+    aut_sub = {}
+    for s, tipos in SUB_TIPOS.items():
+        xs = sub[sub.tipo.isin(tipos)]
+        aut_sub[s] = {str(a): [int(xs[xs.anio <= a].docente_id.nunique()), int(xs[xs.anio == a].docente_id.nunique())]
+                      for a in ANIOS_PROD}
+    prod[k] = {"anios": porA, "autRango": int(sub.docente_id.nunique()), "totalRango": int(u.uid.nunique()),
+               "autSub": aut_sub}
 
 # ===================================================== R22 · proyectos de investigación
 r22 = leer("R22_corregido")
@@ -262,12 +277,17 @@ for k, sub in claves_de(r22):
         "ej": int((ult.estado != "FINALIZADO").sum()),
         "fin": int(sub[sub.estado == "FINALIZADO"].uid.nunique()), "prof": len(set().union(*sub.prof))}}
 pcar = r22.groupby("uid").clave.apply(lambda s: "+".join(sorted(set(s), key=CARRERAS_K.index)))
+# Docentes que integran cada proyecto en cada carrera, modalidad y facultad (en todo su periodo de ejecución).
+pdoc = defaultdict(dict)
+for k, sub in claves_de(r22):
+    for uid, g in sub.groupby("uid"):
+        pdoc[uid][k] = len(set().union(*g.prof))
 pitems = []
 for uid, g in r22.groupby("uid"):
     p = g.iloc[0]
     est_anio = {str(int(a)): int(h.estado.iloc[0] == "FINALIZADO") for a, h in g.groupby("anio")}
     pitems.append([p.origen, txt(p.titulo), txt(p.linea), txt(p.grupo), txt(p.financiamiento),
-                   str(p.fecha_inicio)[:10], str(p.fecha_fin)[:10], est_anio, pcar[uid]])
+                   str(p.fecha_inicio)[:10], str(p.fecha_fin)[:10], est_anio, pcar[uid], pdoc[uid]])
 RANGO_PROY = [int(r22.anio.min()), int(r22.anio.max())]
 
 escribir_js("informes-data.js", "FACS_INF", {
